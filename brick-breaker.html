@@ -1,6 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Two-Player Brick Breaker</title>
     <style>
         canvas {
@@ -43,6 +45,27 @@
              right: 10px;
              background-color: rgba(255, 50, 0, 0.7); /* Distinct color for laser */
          }
+        /* Game UI styles */
+        #gameUI {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+        }
+        .ui-button {
+            background: #4CAF50;
+            color: white;
+            padding: 5px 10px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .ui-button:hover {
+            background: #45a049;
+        }
     </style>
 </head>
 <body>
@@ -52,6 +75,12 @@
     <div id="player2PowerUp" class="power-up-indicator" style="display: none;">Freeze Ray Ready!</div>
     <div id="player1LaserPowerUp" class="power-up-indicator" style="display: none;">Laser Ready!</div>
     <div id="player2LaserPowerUp" class="power-up-indicator" style="display: none;">Laser Ready!</div>
+    
+    <!-- Add game UI for menu controls -->
+    <div id="gameUI">
+        <button id="returnToMenuBtn" class="ui-button" onclick="returnToStartScreen()">Return to Menu</button>
+        <button id="restartGameBtn" class="ui-button" onclick="restartGame()">Restart Game</button>
+    </div>
 
     <script>
         // Debug helper - logs to console for easier debugging
@@ -69,6 +98,7 @@
         const player2LaserIndicator = document.getElementById('player2LaserPowerUp');
         let gameMode = 0; // Will be set from URL parameter
         let player1ControlMethod = 'keyboard'; // Default control method for player 1
+        let player2ControlMethod = 'keyboard'; // Default control method for player 2
         let gameLoop;
         let isTouchDevice = false; // Flag for touch support
         let activeTouches = {}; // Store active touch points
@@ -1278,6 +1308,41 @@
             window.location.href = 'index.html'; // Navigate back to index.html
         }
 
+        // Function to restart the current game
+        function restartGame() {
+            debug("Restarting game");
+            if (gameLoop) cancelAnimationFrame(gameLoop);
+            gameLoop = null;
+            
+            // Reset game state
+            balls.forEach((_, index) => resetBall(index));
+            resetBricks();
+            paddle1.score = 0;
+            paddle2.score = 0;
+            
+            // Reset all states
+            [paddle1, paddle2].forEach(p => {
+                p.hasFreezeRay = false; p.isFrozen = false; p.frozenTimeRemaining = 0;
+                p.isWide = false; p.widePaddleTimeRemaining = 0; p.width = p.originalWidth;
+                p.hasLaser = false; p.isAshes = false; p.ashesTimeRemaining = 0;
+                p.x = 350; // Reset position
+            });
+            
+            // Reset UI
+            player1PowerUpIndicator.style.display = "none";
+            player2PowerUpIndicator.style.display = "none";
+            player1LaserIndicator.style.display = "none";
+            player2LaserIndicator.style.display = "none";
+            
+            // Clear active elements
+            freezeRays.length = 0;
+            laserBeams.length = 0;
+            particles.length = 0;
+            
+            // Restart game with same mode
+            initializeGame(gameMode);
+        }
+
         // Reset ball
         function resetBall(ballIndex) {
             const ball = balls[ballIndex];
@@ -1331,6 +1396,14 @@
 
             function animate() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Handle ESC key press
+                if (keys.Escape) {
+                    keys.Escape = false; // Reset key state
+                    returnToStartScreen();
+                    return;
+                }
+                
                 movePaddles();
 
                 // Update & Draw Particles
@@ -1381,6 +1454,7 @@
             }
             gameLoop = requestAnimationFrame(animate);
             soundFX.playGameStart();
+            document.getElementById('gameUI').style.display = "block"; // Show game UI
         }
 
         // Ball collision with paddles
@@ -1544,40 +1618,45 @@
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const modeParam = urlParams.get('mode');
+            const controlParam = urlParams.get('control');
 
-            // Set game mode based on URL parameter (default to PvP if not specified or invalid)
-            if (modeParam === 'pva') {
+            // Set game mode based on URL parameter
+            if (modeParam === '1') {
                 gameMode = 1; // Player vs AI
-                // Use mouse for player 1 by default in PvA, unless overridden later by touch
-                player1ControlMethod = 'mouse';
-                document.addEventListener('mousemove', handleMouseMove); // Add mouse listener only if needed
-                debug("Game Mode: Player vs AI. Player 1 controls: Mouse");
+                // Use control method from URL parameter, default to keyboard if not specified
+                player1ControlMethod = controlParam === 'mouse' ? 'mouse' : 'keyboard';
+                
+                if (player1ControlMethod === 'mouse') {
+                    document.addEventListener('mousemove', handleMouseMove);
+                    debug("Game Mode: Player vs AI. Player 1 controls: Mouse");
+                } else {
+                    debug("Game Mode: Player vs AI. Player 1 controls: Keyboard");
+                }
+            } else if (modeParam === '2') {
+                gameMode = 2; // Two Players
+                player1ControlMethod = 'keyboard';
+                player2ControlMethod = 'keyboard';
+                debug("Game Mode: Two Players. Player 1 controls: Keyboard, Player 2 controls: Keyboard");
+            } else if (modeParam === '3') {
+                gameMode = 3; // AI vs AI
+                debug("Game Mode: AI vs AI");
             } else {
                 gameMode = 0; // Player vs Player (default)
-                 // Remove mouse move listener if it's PvP and not needed
-                 // document.removeEventListener('mousemove', handleMouseMove);
-                player1ControlMethod = 'keyboard'; // Keep P1 as keyboard default for PvP
+                player1ControlMethod = 'keyboard';
+                player2ControlMethod = 'keyboard';
                 debug("Game Mode: Player vs Player. Player 1 controls: Keyboard, Player 2 controls: Keyboard");
             }
 
             setupTouchControls(); // Detect touch and setup listeners
 
-            // If touch is detected, potentially override P1 control for PvP
-            // if (isTouchDevice && gameMode === 0) {
-            //     player1ControlMethod = 'touch';
-            //     debug("Touch detected, overriding Player 1 controls to Touch for PvP.");
-            //     document.removeEventListener('mousemove', handleMouseMove); // Ensure mouse move doesn't interfere
-            // } else if (isTouchDevice && gameMode === 1) {
-            //     player1ControlMethod = 'touch'; // Also allow touch for PvA
-            //     debug("Touch detected, overriding Player 1 controls to Touch for PvA.");
-            //     document.removeEventListener('mousemove', handleMouseMove);
-            // }
-
+            // If touch is detected, potentially override controls
+            if (isTouchDevice) {
+                debug("Touch device detected, touch controls available");
+            }
 
             soundFX.init(); // Initialize sound system
             initializeGame(gameMode); // Initialize game state
         });
-
     </script>
 </body>
 </html>
