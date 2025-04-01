@@ -1,0 +1,22 @@
+{
+  "name": "brick-breaker-2p",
+  "version": "1.0.0",
+  "description": "Two-player Brick Breaker game",
+  "main": "index.html",
+  "scripts": {
+    "test": "jest",
+    "test:e2e": "jest --config jest-puppeteer.config.js",
+    "start": "http-server -c-1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.22.1",
+    "@babel/preset-env": "^7.22.1",
+    "babel-jest": "^29.5.0",
+    "canvas": "^2.11.2",
+    "http-server": "^14.1.1",
+    "jest": "^29.5.0",
+    "jest-environment-jsdom": "^29.5.0",
+    "jest-puppeteer": "^9.0.0",
+    "puppeteer": "^20.5.0"
+  }
+}
