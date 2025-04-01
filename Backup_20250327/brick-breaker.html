@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Two-Player Brick Breaker</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            background-color: #000;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        /* Power-up indicator styles */
+        .power-up-indicator {
+            position: absolute;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+        #player1PowerUp {
+            bottom: 10px;
+            left: 10px;
+        }
+        #player2PowerUp {
+            top: 10px;
+            right: 10px;
+        }
+         #player1LaserPowerUp {
+             bottom: 40px; /* Position below freeze ray indicator */
+             left: 10px;
+             background-color: rgba(255, 50, 0, 0.7); /* Distinct color for laser */
+         }
+         #player2LaserPowerUp {
+             top: 40px; /* Position below freeze ray indicator */
+             right: 10px;
+             background-color: rgba(255, 50, 0, 0.7); /* Distinct color for laser */
+         }
+    </style>
+</head>
+<body>
+    <!-- Start screen removed -->
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="player1PowerUp" class="power-up-indicator" style="display: none;">Freeze Ray Ready!</div>
+    <div id="player2PowerUp" class="power-up-indicator" style="display: none;">Freeze Ray Ready!</div>
+    <div id="player1LaserPowerUp" class="power-up-indicator" style="display: none;">Laser Ready!</div>
+    <div id="player2LaserPowerUp" class="power-up-indicator" style="display: none;">Laser Ready!</div>
+
+    <script>
+        // Debug helper - logs to console for easier debugging
+        function debug(message) {
+            console.log(`[DEBUG] ${message}`);
+        }
+
+        // Game setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        // const startScreen = document.getElementById('startScreen'); // Removed
+        const player1PowerUpIndicator = document.getElementById('player1PowerUp');
+        const player2PowerUpIndicator = document.getElementById('player2PowerUp');
+        const player1LaserIndicator = document.getElementById('player1LaserPowerUp');
+        const player2LaserIndicator = document.getElementById('player2LaserPowerUp');
+        let gameMode = 0; // Will be set from URL parameter
+        let gameLoop;
+
+        // Game objects
+        const paddle1 = {
+            x: 350,
+            y: canvas.height - 30,
+            width: 100,
+            height: 10,
+            dx: 0,
+            score: 0,
+            curvature: 0.3,
+            hasFreezeRay: false,
+            isFrozen: false,
+            frozenTimeRemaining: 0,
+            isWide: false,
+            widePaddleTimeRemaining: 0,
+            originalWidth: 100,
+            hasLaser: false,
+            isAshes: false,
+            ashesTimeRemaining: 0,
+        };
+
+        const paddle2 = {
+            x: 350,
+            y: 30,
+            width: 100,
+            height: 10,
+            dx: 0,
+            score: 0,
+            curvature: 0.3,
+            hasFreezeRay: false,
+            isFrozen: false,
+            frozenTimeRemaining: 0,
+            isWide: false,
+            widePaddleTimeRemaining: 0,
+            originalWidth: 100,
+            hasLaser: false,
+            isAshes: false,
+            ashesTimeRemaining: 0,
+        };
+
+        // Freeze ray objects
+        const freezeRays = [];
+        // Array to hold laser beams
+        const laserBeams = [];
+
+        // Class for freeze ray
+        class FreezeRay {
+            constructor(x, y, player) {
+                this.x = x;
+                this.y = y;
+                this.width = 5;
+                this.height = player === 1 ? -canvas.height : canvas.height;
+                this.player = player;
+                this.speed = 12;
+                this.active = true;
+                this.alphaValue = 1.0;
+                this.hitTarget = false;
+                this.progress = 0;
+            }
+
+            update() {
+                if (this.hitTarget) {
+                    this.alphaValue -= 0.05;
+                    if (this.alphaValue <= 0) {
+                        this.active = false;
+                    }
+                    return;
+                }
+                this.progress += this.speed / Math.abs(this.height);
+                if (this.progress >= 1) {
+                    const targetPaddle = this.player === 1 ? paddle2 : paddle1;
+                    const hitX = this.x;
+                    if (hitX >= targetPaddle.x && hitX <= targetPaddle.x + targetPaddle.width) {
+                        targetPaddle.isFrozen = true;
+                        targetPaddle.frozenTimeRemaining = 10;
+                        debug(`Player ${this.player === 1 ? 2 : 1} frozen for 10 seconds!`);
+                        this.hitTarget = true;
+                        soundFX.playFreezeRay();
+                    } else {
+                        debug(`Freeze ray missed!`);
+                        this.hitTarget = true;
+                        soundFX.playMiss();
+                    }
+                }
+            }
+
+            draw() {
+                 ctx.save();
+                 if (this.hitTarget) {
+                     ctx.globalAlpha = this.alphaValue;
+                     ctx.beginPath();
+                     ctx.strokeStyle = "#00FFFF";
+                     ctx.lineWidth = this.width * 0.4; // Use a fraction of width for core beam
+                     ctx.moveTo(this.x, this.y);
+                     ctx.lineTo(this.x, this.y + this.height * this.progress); // Draw only the traveled part
+                     ctx.stroke();
+                     ctx.closePath();
+                 } else {
+                     // Draw active ray
+                     // Outer glow
+                     ctx.beginPath();
+                     ctx.strokeStyle = "#80FFFF"; // Lighter cyan for glow
+                     ctx.lineWidth = this.width + 4; // Wider for glow effect
+                     ctx.globalAlpha = 0.5; // Semi-transparent glow
+                     ctx.moveTo(this.x, this.y);
+                     ctx.lineTo(this.x, this.y + this.height * this.progress);
+                     ctx.stroke();
+                     ctx.closePath();
+
+                     // Inner beam
+                     ctx.beginPath();
+                     ctx.strokeStyle = "#00FFFF"; // Bright cyan core
+                     ctx.lineWidth = this.width;
+                     ctx.globalAlpha = 1.0; // Fully opaque core
+                     ctx.moveTo(this.x, this.y);
+                     ctx.lineTo(this.x, this.y + this.height * this.progress);
+                     ctx.stroke();
+                     ctx.closePath();
+
+                     // Tip effect (circular)
+                     ctx.beginPath();
+                     ctx.fillStyle = "#FFFFFF"; // White tip
+                     ctx.arc(this.x, this.y + this.height * this.progress, this.width + 2, 0, Math.PI * 2);
+                     ctx.fill();
+                     ctx.closePath();
+                 }
+                 ctx.restore();
+             }
+        }
+
+        // Class for laser beam
+        class LaserBeam {
+            constructor(x, y, player) {
+                this.x = x;
+                this.y = y;
+                this.width = 20;
+                this.height = player === 1 ? -canvas.height : canvas.height;
+                this.player = player;
+                this.speed = 20;
+                this.active = true;
+                this.alphaValue = 1.0;
+                this.hitTarget = false;
+                this.progress = 0;
+                this.affectedBricks = [];
+            }
+
+            update() {
+                if (this.hitTarget) {
+                    this.alphaValue -= 0.05;
+                    if (this.alphaValue <= 0) {
+                        this.active = false;
+                    }
+                    return;
+                }
+                this.progress += this.speed / Math.abs(this.height);
+                this.checkBrickCollisions();
+                if (this.progress >= 1) {
+                    const targetPaddle = this.player === 1 ? paddle2 : paddle1;
+                    const hitX = this.x;
+                    if (hitX >= targetPaddle.x && hitX <= targetPaddle.x + targetPaddle.width) {
+                        targetPaddle.isAshes = true;
+                        targetPaddle.ashesTimeRemaining = 10;
+                        debug(`Player ${this.player === 1 ? 2 : 1} turned to ashes for 10 seconds!`);
+                        this.hitTarget = true;
+                        soundFX.playLaserHit();
+                    } else {
+                        debug(`Laser missed!`);
+                        this.hitTarget = true;
+                        soundFX.playMiss();
+                    }
+                }
+            }
+
+            checkBrickCollisions() {
+                const startY = this.y;
+                const endY = this.y + this.height * this.progress;
+                const beamX = this.x;
+                const beamWidth = this.width / 2;
+                for (let c = 0; c < brickColumnCount; c++) {
+                    for (let r = 0; r < brickRowCount; r++) {
+                        const brick = bricks[c][r];
+                        if (brick.status > 0) {
+                            if (beamX + beamWidth > brick.x && beamX - beamWidth < brick.x + brickWidth) {
+                                if (this.player === 1 && startY > brick.y && endY <= brick.y + brickHeight) {
+                                    this.destroyBrick(c, r);
+                                } else if (this.player === 2 && startY < brick.y && endY >= brick.y) {
+                                    this.destroyBrick(c, r);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            destroyBrick(c, r) {
+                const brickKey = `${c},${r}`;
+                if (this.affectedBricks.includes(brickKey)) {
+                    return;
+                }
+                this.affectedBricks.push(brickKey);
+                if (this.player === 1) {
+                    paddle1.score += 5;
+                    debug(`Player 1 scored 5 points for lasering a brick`);
+                } else {
+                    paddle2.score += 5;
+                    debug(`${gameMode === 1 ? 'AI' : 'Player 2'} scored 5 points for lasering a brick`);
+                }
+                createAshParticles(bricks[c][r], 30);
+                bricks[c][r].status = 0;
+                soundFX.playBrickBreak();
+                debug(`Brick at [${c},${r}] turned to ashes by laser`);
+            }
+
+            draw() {
+                 ctx.save();
+                 if (this.hitTarget) {
+                     ctx.globalAlpha = this.alphaValue;
+                     this.drawLaserBeam(this.progress); // Draw fading beam
+                 } else {
+                     this.drawLaserBeam(this.progress); // Draw active beam
+                 }
+                 ctx.restore();
+             }
+
+             drawLaserBeam(progress) {
+                 // Draw core beam (yellow)
+                 ctx.beginPath();
+                 ctx.strokeStyle = "#FFDD00";
+                 ctx.lineWidth = this.width * 0.4;
+                 ctx.moveTo(this.x, this.y);
+                 ctx.lineTo(this.x, this.y + this.height * progress);
+                 ctx.stroke();
+                 ctx.closePath();
+
+                 // Draw outer beam (red)
+                 ctx.beginPath();
+                 ctx.strokeStyle = "#FF4400";
+                 ctx.lineWidth = this.width;
+                 ctx.globalAlpha = 0.7;
+                 ctx.moveTo(this.x, this.y);
+                 ctx.lineTo(this.x, this.y + this.height * progress);
+                 ctx.stroke();
+                 ctx.closePath();
+
+                 // Draw impact point
+                 const impactY = this.y + this.height * progress;
+                 ctx.beginPath();
+                 ctx.fillStyle = "#FFFFFF";
+                 ctx.arc(this.x, impactY, this.width/2 + 5, 0, Math.PI * 2);
+                 ctx.globalAlpha = 0.8;
+                 ctx.fill();
+                 ctx.closePath();
+
+                 // Draw flame effects
+                 const numFlames = 5;
+                 for (let i = 0; i < numFlames; i++) {
+                     const flameHeight = this.width * (0.5 + Math.random() * 0.5);
+                     const flameWidth = this.width * (0.2 + Math.random() * 0.3);
+                     const flameX = this.x + (Math.random() - 0.5) * this.width * 0.8;
+                     const flameY = impactY + (this.player === 1 ? -flameHeight : 0); // Adjust Y based on direction
+
+                     // Create gradient for flame
+                     const gradient = ctx.createLinearGradient(flameX, flameY, flameX, flameY + (this.player === 1 ? -flameHeight : flameHeight));
+                     gradient.addColorStop(0, "#FFFFFF");
+                     gradient.addColorStop(0.3, "#FFDD00");
+                     gradient.addColorStop(1, "#FF4400");
+
+                     ctx.beginPath();
+                     ctx.fillStyle = gradient;
+                     ctx.globalAlpha = 0.7 * this.alphaValue; // Fade with beam
+
+                     // Draw flame shape
+                     if (this.player === 1) { // Upward flame
+                         ctx.moveTo(flameX - flameWidth/2, flameY);
+                         ctx.quadraticCurveTo(flameX - flameWidth/4, flameY - flameHeight/2, flameX, flameY - flameHeight);
+                         ctx.quadraticCurveTo(flameX + flameWidth/4, flameY - flameHeight/2, flameX + flameWidth/2, flameY);
+                     } else { // Downward flame
+                         ctx.moveTo(flameX - flameWidth/2, flameY);
+                         ctx.quadraticCurveTo(flameX - flameWidth/4, flameY + flameHeight/2, flameX, flameY + flameHeight);
+                         ctx.quadraticCurveTo(flameX + flameWidth/4, flameY + flameHeight/2, flameX + flameWidth/2, flameY);
+                     }
+
+                     ctx.closePath();
+                     ctx.fill();
+                 }
+             }
+        }
+
+        // Update ball to be an array of two balls
+        const balls = [
+            { x: canvas.width / 2, y: canvas.height - 50, radius: 8, dx: 2, dy: -2, owner: 1, lastHitBy: 1 },
+            { x: canvas.width / 2, y: 50, radius: 8, dx: -2, dy: 2, owner: 2, lastHitBy: 2 }
+        ];
+
+        // Brick configuration
+        const brickRowCount = 3;
+        const brickColumnCount = 8;
+        const brickWidth = 75;
+        const brickHeight = 20;
+        const brickPadding = 10;
+        const brickOffsetTop = canvas.height / 2 - (brickRowCount * (brickHeight + brickPadding)) / 2;
+        const brickOffsetLeft = (canvas.width - (brickColumnCount * (brickWidth + brickPadding))) / 2;
+
+        // Create bricks array
+        const bricks = [];
+        let currentPattern = 0;
+        const BRICK_NORMAL = 1;
+        const BRICK_POWER_UP = 2;
+        const BRICK_WIDE_PADDLE = 3;
+        const BRICK_LASER_POWER_UP = 4;
+
+        // Initialize bricks with different patterns
+        function initBricks() {
+            debug("Initializing bricks");
+            for (let c = 0; c < brickColumnCount; c++) {
+                bricks[c] = [];
+                for (let r = 0; r < brickRowCount; r++) {
+                    bricks[c][r] = { status: 0 };
+                }
+            }
+            let newPattern;
+            do {
+                newPattern = Math.floor(Math.random() * 5);
+            } while (newPattern === currentPattern && 5 > 1);
+            currentPattern = newPattern;
+            debug(`Selected brick pattern: ${currentPattern}`);
+            switch (currentPattern) {
+                case 0: createStandardPattern(); break;
+                case 1: createCheckerboardPattern(); break;
+                case 2: createDiamondPattern(); break;
+                case 3: createRandomPattern(); break;
+                case 4: createZigzagPattern(); break;
+            }
+            addPowerUpBricks();
+            debug(`Created pattern with ${countActiveBricks()} active bricks`);
+        }
+
+        function addPowerUpBricks() {
+            const numPowerUps = 2 + Math.floor(Math.random() * 2);
+            let powerUpsAdded = 0;
+            while (powerUpsAdded < numPowerUps) {
+                const c = Math.floor(Math.random() * brickColumnCount);
+                const r = Math.floor(Math.random() * brickRowCount);
+                if (bricks[c][r].status === BRICK_NORMAL) {
+                    bricks[c][r].status = BRICK_POWER_UP;
+                    bricks[c][r].color = "#0088FF";
+                    powerUpsAdded++;
+                    debug(`Added power-up brick at [${c},${r}]`);
+                }
+            }
+            const numWidePaddlePowerUps = 2 + Math.floor(Math.random() * 2);
+            let widePaddlePowerUpsAdded = 0;
+            while (widePaddlePowerUpsAdded < numWidePaddlePowerUps) {
+                const c = Math.floor(Math.random() * brickColumnCount);
+                const r = Math.floor(Math.random() * brickRowCount);
+                if (bricks[c][r].status === BRICK_NORMAL) {
+                    bricks[c][r].status = BRICK_WIDE_PADDLE;
+                    bricks[c][r].color = "#8800CC";
+                    widePaddlePowerUpsAdded++;
+                    debug(`Added wide paddle power-up brick at [${c},${r}]`);
+                }
+            }
+            const numLaserPowerUps = 2 + Math.floor(Math.random() * 2);
+            let laserPowerUpsAdded = 0;
+            while (laserPowerUpsAdded < numLaserPowerUps) {
+                const c = Math.floor(Math.random() * brickColumnCount);
+                const r = Math.floor(Math.random() * brickRowCount);
+                if (bricks[c][r].status === BRICK_NORMAL) {
+                    bricks[c][r].status = BRICK_LASER_POWER_UP;
+                    bricks[c][r].color = "#FF3300";
+                    laserPowerUpsAdded++;
+                    debug(`Added laser power-up brick at [${c},${r}]`);
+                }
+            }
+        }
+
+        function countActiveBricks() {
+            let count = 0;
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    if (bricks[c][r].status > 0) count++;
+                }
+            }
+            return count;
+        }
+
+        function createStandardPattern() {
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    const hue = (c * r * 360) / (brickColumnCount * brickRowCount);
+                    const saturation = 70 + Math.random() * 20;
+                    const lightness = 50 + Math.random() * 10;
+                    bricks[c][r] = { x: 0, y: 0, status: BRICK_NORMAL, color: `hsl(${hue}, ${saturation}%, ${lightness}%)` };
+                }
+            }
+        }
+        function createCheckerboardPattern() {
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    const isActive = (c + r) % 2 === 0;
+                    const hue = (c * r * 360) / (brickColumnCount * brickRowCount);
+                    const saturation = 70 + Math.random() * 20;
+                    const lightness = 50 + Math.random() * 10;
+                    bricks[c][r] = { x: 0, y: 0, status: isActive ? BRICK_NORMAL : 0, color: `hsl(${hue}, ${saturation}%, ${lightness}%)` };
+                }
+            }
+        }
+        function createDiamondPattern() {
+            const centerC = Math.floor(brickColumnCount / 2);
+            const centerR = Math.floor(brickRowCount / 2);
+            const maxDistance = Math.max(centerC, centerR) + 1;
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    const distance = Math.abs(c - centerC) + Math.abs(r - centerR);
+                    const isActive = distance < maxDistance;
+                    const hue = (distance * 360) / maxDistance;
+                    const saturation = 70 + Math.random() * 20;
+                    const lightness = 50 + Math.random() * 10;
+                    bricks[c][r] = { x: 0, y: 0, status: isActive ? BRICK_NORMAL : 0, color: `hsl(${hue}, ${saturation}%, ${lightness}%)` };
+                }
+            }
+        }
+        function createRandomPattern() {
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    const isActive = Math.random() > 0.3;
+                    const hue = Math.random() * 360;
+                    const saturation = 70 + Math.random() * 20;
+                    const lightness = 50 + Math.random() * 10;
+                    bricks[c][r] = { x: 0, y: 0, status: isActive ? BRICK_NORMAL : 0, color: `hsl(${hue}, ${saturation}%, ${lightness}%)` };
+                }
+            }
+        }
+        function createZigzagPattern() {
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    const isActive = (c + r) % 3 !== 1;
+                    const hue = (c * 360) / brickColumnCount;
+                    const saturation = 70 + Math.random() * 20;
+                    const lightness = 50 + Math.random() * 10;
+                    bricks[c][r] = { x: 0, y: 0, status: isActive ? BRICK_NORMAL : 0, color: `hsl(${hue}, ${saturation}%, ${lightness}%)` };
+                }
+            }
+        }
+
+        // Draw bricks
+        function drawBricks() {
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    const brick = bricks[c][r];
+                    if (brick.status > 0) {
+                        brick.x = c * (brickWidth + brickPadding) + brickOffsetLeft;
+                        brick.y = r * (brickHeight + brickPadding) + brickOffsetTop;
+                        let baseColor = brick.color;
+                        ctx.beginPath();
+                        ctx.rect(brick.x, brick.y, brickWidth, brickHeight);
+                        ctx.fillStyle = baseColor;
+                        ctx.fill();
+                        ctx.closePath();
+                        const rgb = getRGBfromColor(baseColor);
+                        ctx.beginPath();
+                        ctx.moveTo(brick.x, brick.y);
+                        ctx.lineTo(brick.x + brickWidth, brick.y);
+                        ctx.lineTo(brick.x + brickWidth - 3, brick.y + 3);
+                        ctx.lineTo(brick.x + 3, brick.y + 3);
+                        ctx.closePath();
+                        ctx.fillStyle = lightenColor(rgb, 50);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.moveTo(brick.x, brick.y);
+                        ctx.lineTo(brick.x, brick.y + brickHeight);
+                        ctx.lineTo(brick.x + 3, brick.y + brickHeight - 3);
+                        ctx.lineTo(brick.x + 3, brick.y + 3);
+                        ctx.closePath();
+                        ctx.fillStyle = lightenColor(rgb, 25);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.moveTo(brick.x, brick.y + brickHeight);
+                        ctx.lineTo(brick.x + brickWidth, brick.y + brickHeight);
+                        ctx.lineTo(brick.x + brickWidth - 3, brick.y + brickHeight - 3);
+                        ctx.lineTo(brick.x + 3, brick.y + brickHeight - 3);
+                        ctx.closePath();
+                        ctx.fillStyle = darkenColor(rgb, 50);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.moveTo(brick.x + brickWidth, brick.y);
+                        ctx.lineTo(brick.x + brickWidth, brick.y + brickHeight);
+                        ctx.lineTo(brick.x + brickWidth - 3, brick.y + brickHeight - 3);
+                        ctx.lineTo(brick.x + brickWidth - 3, brick.y + 3);
+                        ctx.closePath();
+                        ctx.fillStyle = darkenColor(rgb, 25);
+                        ctx.fill();
+                        ctx.save();
+                        ctx.clip();
+                        for (let i = 3; i < brickWidth - 3; i += 5) {
+                            ctx.beginPath();
+                            ctx.moveTo(brick.x + i, brick.y + 3);
+                            ctx.lineTo(brick.x + i, brick.y + brickHeight - 3);
+                            ctx.strokeStyle = darkenColor(rgb, 10);
+                            ctx.lineWidth = 0.5;
+                            ctx.stroke();
+                            ctx.closePath();
+                        }
+                        for (let j = 3; j < brickHeight - 3; j += 5) {
+                            ctx.beginPath();
+                            ctx.moveTo(brick.x + 3, brick.y + j);
+                            ctx.lineTo(brick.x + brickWidth - 3, brick.y + j);
+                            ctx.strokeStyle = darkenColor(rgb, 10);
+                            ctx.lineWidth = 0.5;
+                            ctx.stroke();
+                            ctx.closePath();
+                        }
+                        ctx.restore();
+                        if (brick.status === BRICK_POWER_UP || brick.status === BRICK_WIDE_PADDLE || brick.status === BRICK_LASER_POWER_UP) {
+                            ctx.beginPath();
+                            const sparkleX = brick.x + brickWidth / 2;
+                            const sparkleY = brick.y + brickHeight / 2;
+                            const sparkleSize = 5 + Math.sin(Date.now() / 200) * 2;
+                            ctx.moveTo(sparkleX, sparkleY - sparkleSize);
+                            ctx.lineTo(sparkleX + sparkleSize / 2, sparkleY - sparkleSize / 2);
+                            ctx.lineTo(sparkleX + sparkleSize, sparkleY);
+                            ctx.lineTo(sparkleX + sparkleSize / 2, sparkleY + sparkleSize / 2);
+                            ctx.lineTo(sparkleX, sparkleY + sparkleSize);
+                            ctx.lineTo(sparkleX - sparkleSize / 2, sparkleY + sparkleSize / 2);
+                            ctx.lineTo(sparkleX - sparkleSize, sparkleY);
+                            ctx.lineTo(sparkleX - sparkleSize / 2, sparkleY - sparkleSize / 2);
+                            ctx.closePath();
+                            if (brick.status === BRICK_POWER_UP) ctx.fillStyle = "#FFFFFF";
+                            else if (brick.status === BRICK_WIDE_PADDLE) ctx.fillStyle = "#FF88FF";
+                            else if (brick.status === BRICK_LASER_POWER_UP) ctx.fillStyle = "#FFFF00";
+                            ctx.fill();
+                        }
+                    }
+                }
+            }
+        }
+
+        function lightenColor(rgb, amount) {
+            return `rgb(${Math.min(rgb.r + amount, 255)}, ${Math.min(rgb.g + amount, 255)}, ${Math.min(rgb.b + amount, 255)})`;
+        }
+        function darkenColor(rgb, amount) {
+            return `rgb(${Math.max(rgb.r - amount, 0)}, ${Math.max(rgb.g - amount, 0)}, ${Math.max(rgb.b - amount, 0)})`;
+        }
+        function getRGBfromColor(color) {
+            const temp = document.createElement('div');
+            temp.style.color = color;
+            document.body.appendChild(temp);
+            const style = window.getComputedStyle(temp).color;
+            document.body.removeChild(temp);
+            const match = style.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+            if (match) return { r: parseInt(match[1]), g: parseInt(match[2]), b: parseInt(match[3]) };
+            return { r: 128, g: 128, b: 128 };
+        }
+
+        // Update checkBrickCollision function
+        function checkBrickCollision(ball) {
+            let bricksRemaining = false;
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    const brick = bricks[c][r];
+                    if (brick.status > 0) {
+                        bricksRemaining = true;
+                        if (ball.x + ball.radius > brick.x &&
+                            ball.x - ball.radius < brick.x + brickWidth &&
+                            ball.y + ball.radius > brick.y &&
+                            ball.y - ball.radius < brick.y + brickHeight) {
+                            ball.dy = -ball.dy;
+                            const player = ball.lastHitBy;
+                            const paddle = player === 1 ? paddle1 : paddle2;
+
+                            if (brick.status === BRICK_POWER_UP) {
+                                paddle.hasFreezeRay = true;
+                                if (player === 1) player1PowerUpIndicator.style.display = "block";
+                                else player2PowerUpIndicator.style.display = "block";
+                                debug(`Player ${player} got freeze ray power-up!`);
+                                soundFX.playPowerUp();
+                            } else if (brick.status === BRICK_WIDE_PADDLE) {
+                                if (!paddle.isWide) paddle.originalWidth = paddle.width;
+                                paddle.width = paddle.originalWidth * 2.0;
+                                paddle.x -= (paddle.width - paddle.originalWidth) / 2;
+                                paddle.isWide = true;
+                                paddle.widePaddleTimeRemaining = 10;
+                                debug(`Player ${player} got wide paddle power-up for 10 seconds!`);
+                                soundFX.playPowerUp();
+                            } else if (brick.status === BRICK_LASER_POWER_UP) {
+                                paddle.hasLaser = true;
+                                if (player === 1) player1LaserIndicator.style.display = "block";
+                                else player2LaserIndicator.style.display = "block";
+                                debug(`Player ${player} got laser power-up!`);
+                                soundFX.playPowerUp();
+                            }
+
+                            brick.status = 0;
+                            createBrickParticles(brick);
+                            if (ball.lastHitBy === 1) {
+                                paddle1.score += 5;
+                                debug(`Player 1 scored 5 points for breaking a brick`);
+                            } else {
+                                paddle2.score += 5;
+                                debug(`${gameMode === 1 ? 'AI' : 'Player 2'} scored 5 points for breaking a brick`);
+                            }
+                            soundFX.playBrickBreak();
+                            debug(`Brick hit at position [${c},${r}] - points to player ${ball.lastHitBy}`);
+                            return true; // Collision detected
+                        }
+                    }
+                }
+            }
+            if (!bricksRemaining) {
+                debug("All bricks destroyed - resetting");
+                resetBricks();
+                paddle1.score += 20;
+                paddle2.score += 20;
+                soundFX.playLevelComplete();
+            }
+            return false; // No collision
+        }
+
+        // Add brick particle system for breaking animation
+        const particles = [];
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color; // Expecting 'r, g, b' string
+                this.size = 3;
+                this.speedX = (Math.random() - 0.5) * 8;
+                this.speedY = (Math.random() - 0.5) * 8;
+                this.gravity = 0.1;
+                this.life = 1.0;
+                this.decay = 0.02;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.speedY += this.gravity;
+                this.life -= this.decay;
+            }
+            draw(ctx) {
+                ctx.fillStyle = `rgba(${this.color}, ${this.life})`;
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+            }
+        }
+        function createBrickParticles(brick) {
+            const rgb = getRGBfromColor(brick.color);
+            const colorString = `${rgb.r}, ${rgb.g}, ${rgb.b}`;
+            for (let i = 0; i < 20; i++) {
+                particles.push(new Particle(brick.x + brickWidth / 2, brick.y + brickHeight / 2, colorString));
+            }
+        }
+        function createAshParticles(object, count) {
+             const x = object.x + brickWidth / 2;
+             const y = object.y + brickHeight / 2;
+             const ashColors = ['30, 30, 30', '50, 50, 50', '70, 70, 70']; // RGB strings
+             for (let i = 0; i < count; i++) {
+                 const color = ashColors[Math.floor(Math.random() * ashColors.length)];
+                 const particle = new Particle(x, y, color);
+                 particle.decay = 0.01;
+                 particle.size = 4 + Math.random() * 3;
+                 particle.speedX *= 0.7;
+                 particle.speedY *= 0.7;
+                 particles.push(particle);
+             }
+         }
+
+        // Controls
+        const keys = { ArrowLeft: false, ArrowRight: false, a: false, d: false, Space: false, s: false, Escape: false };
+        document.addEventListener('keydown', (e) => {
+            // Try to resume audio context on first keydown
+            if (soundFX.audioContext && soundFX.audioContext.state === 'suspended') {
+                debug("Attempting to resume AudioContext via keydown...");
+                soundFX.audioContext.resume().then(() => {
+                    debug(`AudioContext resumed via keydown. State: ${soundFX.audioContext.state}`);
+                }).catch(e => console.error("Error resuming AudioContext via keydown:", e));
+            }
+
+            const key = e.key === ' ' ? 'Space' : e.key;
+            if (key in keys) keys[key] = true;
+            if (key === 'Escape' && gameMode > 0) returnToStartScreen();
+        });
+        document.addEventListener('keyup', (e) => {
+            const key = e.key === ' ' ? 'Space' : e.key;
+            if (key in keys) keys[key] = false;
+        });
+        // Add click listener to canvas to resume audio context
+        canvas.addEventListener('click', () => {
+            if (soundFX.audioContext && soundFX.audioContext.state === 'suspended') {
+                debug("Attempting to resume AudioContext via canvas click...");
+                soundFX.audioContext.resume().then(() => {
+                    debug(`AudioContext resumed via canvas click. State: ${soundFX.audioContext.state}`);
+                }).catch(e => console.error("Error resuming AudioContext via canvas click:", e));
+            }
+        });
+
+        // Draw paddle
+        function drawPaddle(paddle) {
+            ctx.save();
+            if (paddle.isAshes) {
+                const paddleCenter = paddle.x + paddle.width / 2;
+                const yPos = paddle === paddle1 ? paddle.y : paddle.y + paddle.height;
+                ctx.beginPath();
+                ctx.fillStyle = "#333333";
+                const ashWidth = paddle.width * 0.8;
+                if (paddle === paddle1) ctx.ellipse(paddleCenter, yPos, ashWidth/2, paddle.height/2, 0, 0, Math.PI * 2);
+                else ctx.ellipse(paddleCenter, yPos - paddle.height/2, ashWidth/2, paddle.height/2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+                if (Math.random() < 0.3) {
+                    const ashX = paddleCenter + (Math.random() - 0.5) * paddle.width * 0.6;
+                    const ashY = paddle === paddle1 ? yPos - paddle.height/2 : yPos;
+                    const particle = new Particle(ashX, ashY, "80, 80, 80"); // Ash color
+                    particle.size = 2 + Math.random() * 2;
+                    particle.speedX = (Math.random() - 0.5) * 1;
+                    particle.speedY = -1 - Math.random() * 1;
+                    particle.gravity = 0.02;
+                    particles.push(particle);
+                }
+                ctx.fillStyle = "#FFFFFF";
+                ctx.font = "12px Arial";
+                ctx.fillText(`${Math.ceil(paddle.ashesTimeRemaining)}s`, paddleCenter - 5, paddle === paddle1 ? yPos - 15 : yPos + 15);
+                ctx.restore();
+                return;
+            }
+
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            const curveHeight = paddle.height * paddle.curvature;
+            const midX = paddle.x + paddle.width / 2;
+            if (paddle === paddle1) {
+                ctx.moveTo(paddle.x, paddle.y);
+                ctx.lineTo(paddle.x + paddle.width, paddle.y);
+                ctx.lineTo(paddle.x + paddle.width, paddle.y + paddle.height);
+                ctx.lineTo(paddle.x, paddle.y + paddle.height);
+                ctx.lineTo(paddle.x, paddle.y);
+                ctx.moveTo(paddle.x, paddle.y);
+                ctx.quadraticCurveTo(midX, paddle.y - curveHeight, paddle.x + paddle.width, paddle.y);
+            } else {
+                ctx.moveTo(paddle.x, paddle.y);
+                ctx.lineTo(paddle.x + paddle.width, paddle.y);
+                ctx.lineTo(paddle.x + paddle.width, paddle.y + paddle.height);
+                ctx.lineTo(paddle.x, paddle.y + paddle.height);
+                ctx.lineTo(paddle.x, paddle.y);
+                ctx.moveTo(paddle.x, paddle.y + paddle.height);
+                ctx.quadraticCurveTo(midX, paddle.y + paddle.height + curveHeight, paddle.x + paddle.width, paddle.y + paddle.height);
+            }
+
+            if (paddle.isFrozen) {
+                ctx.fillStyle = "#B0E0E6";
+                ctx.fill();
+                ctx.closePath();
+                ctx.fillStyle = "#FFFFFF";
+                ctx.font = "12px Arial";
+                ctx.fillText(`${Math.ceil(paddle.frozenTimeRemaining)}s`, paddle.x + paddle.width / 2 - 5, paddle === paddle1 ? paddle.y - 10 : paddle.y + paddle.height + 20);
+                for (let i = 0; i < 5; i++) {
+                    ctx.beginPath();
+                    const xPos = paddle.x + paddle.width * (i / 4);
+                    const yPos = paddle === paddle1 ? paddle.y : paddle.y + paddle.height;
+                    const direction = paddle === paddle1 ? -1 : 1;
+                    ctx.moveTo(xPos, yPos);
+                    ctx.lineTo(xPos - 5, yPos + (8 * direction));
+                    ctx.lineTo(xPos, yPos + (12 * direction));
+                    ctx.lineTo(xPos + 5, yPos + (8 * direction));
+                    ctx.closePath();
+                    ctx.fillStyle = "#FFFFFF";
+                    ctx.globalAlpha = 0.7;
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                }
+            } else {
+                if (paddle.isWide) {
+                    ctx.fillStyle = paddle === paddle1 ? "#AA55FF" : "#AA55FF";
+                    ctx.fill();
+                    ctx.closePath();
+                    ctx.fillStyle = "#FFFFFF";
+                    ctx.font = "12px Arial";
+                    ctx.fillText(`${Math.ceil(paddle.widePaddleTimeRemaining)}s`, paddle.x + paddle.width / 2 - 5, paddle === paddle1 ? paddle.y - 10 : paddle.y + paddle.height + 20);
+                } else {
+                    ctx.fillStyle = paddle === paddle1 ? "#3498db" : "#e74c3c";
+                    ctx.fill();
+                    ctx.closePath();
+                }
+            }
+            ctx.restore();
+        }
+
+        // Draw ball
+        function drawBall() {
+            balls.forEach(ball => {
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                ctx.fillStyle = ball.owner === 1 ? '#ff4444' : '#44ff44';
+                ctx.fill();
+                ctx.closePath();
+            });
+        }
+
+        // Draw score
+        function drawScore() {
+            ctx.fillStyle = '#fff';
+            ctx.font = '24px Arial';
+            let player1Name = "Player 1";
+            let player2Name = "Player 2";
+            if (gameMode === 1) player2Name = "AI";
+            else if (gameMode === 3) { player1Name = "AI 1"; player2Name = "AI 2"; }
+            ctx.fillText(`${player1Name}: ${paddle1.score}`, 20, canvas.height / 2 + 24);
+            ctx.fillText(`${player2Name}: ${paddle2.score}`, 20, canvas.height / 2 - 24);
+        }
+
+        // AI Logic Helper
+        function moveAIPaddle(paddle, playerNum) {
+             if (paddle.isFrozen || paddle.isAshes) {
+                 paddle.dx = 0;
+                 return;
+             }
+
+             const isBottomPaddle = (playerNum === 1);
+             const approachingBalls = balls.filter(ball => (isBottomPaddle ? ball.dy > 0 : ball.dy < 0));
+
+             let ballToTrack;
+             if (approachingBalls.length > 0) {
+                 ballToTrack = approachingBalls.find(ball => ball.lastHitBy === playerNum || ball.owner === playerNum);
+                 if (!ballToTrack) {
+                     approachingBalls.sort((a, b) =>
+                         isBottomPaddle ? (paddle.y - a.y) - (paddle.y - b.y) : (a.y - paddle.y) - (b.y - paddle.y)
+                     );
+                     ballToTrack = approachingBalls[0];
+                 }
+             } else {
+                 ballToTrack = balls.find(ball => ball.lastHitBy === playerNum || ball.owner === playerNum) || balls[0];
+             }
+
+             const targetX = ballToTrack.x - paddle.width / 2;
+             const diff = targetX - paddle.x;
+             const randomness = (Math.random() - 0.5) * 15;
+             const maxSpeed = 5; // AI speed limit
+
+             if (Math.abs(diff) > 10) {
+                 const speedFactor = Math.min(0.2, 0.1 + Math.abs(diff) / 1000);
+                 paddle.dx = diff * speedFactor + randomness * 0.05;
+                 paddle.dx = Math.max(-maxSpeed, Math.min(maxSpeed, paddle.dx)); // Clamp speed
+             } else {
+                 paddle.dx *= 0.8; // Slow down near target
+             }
+             paddle.x += paddle.dx;
+
+             // AI Shooting Logic (Freeze Ray)
+             if (paddle.hasFreezeRay) {
+                 const opponentPaddle = isBottomPaddle ? paddle2 : paddle1;
+                 const paddleAlignmentThreshold = 20;
+                 const isAligned = Math.abs(paddle.x + paddle.width / 2 - opponentPaddle.x - opponentPaddle.width / 2) < paddleAlignmentThreshold;
+                 if ((isAligned && Math.random() < 0.1) || Math.random() < 0.005) {
+                     const aimTargetX = opponentPaddle.x + opponentPaddle.width / 2 - paddle.width / 2;
+                     if (Math.abs(paddle.x - aimTargetX) < 10 || isAligned) {
+                         shootFreezeRay(playerNum);
+                         paddle.hasFreezeRay = false;
+                         if (playerNum === 1) player1PowerUpIndicator.style.display = "none";
+                         else player2PowerUpIndicator.style.display = "none";
+                         debug(`AI ${playerNum} shoots freeze ray`);
+                     }
+                 }
+             }
+             // AI Shooting Logic (Laser)
+             if (paddle.hasLaser) {
+                 const opponentPaddle = isBottomPaddle ? paddle2 : paddle1;
+                 const paddleAlignmentThreshold = 20;
+                 const isAligned = Math.abs(paddle.x + paddle.width / 2 - opponentPaddle.x - opponentPaddle.width / 2) < paddleAlignmentThreshold;
+                 if ((isAligned && Math.random() < 0.1) || Math.random() < 0.005) {
+                     const aimTargetX = opponentPaddle.x + opponentPaddle.width / 2 - paddle.width / 2;
+                     if (Math.abs(paddle.x - aimTargetX) < 10 || isAligned) {
+                         shootLaser(playerNum);
+                         paddle.hasLaser = false;
+                         if (playerNum === 1) player1LaserIndicator.style.display = "none";
+                         else player2LaserIndicator.style.display = "none";
+                         debug(`AI ${playerNum} shoots laser`);
+                     }
+                 }
+             }
+         }
+
+        // Move paddles
+        function movePaddles() {
+            // Player 1 Movement
+            if (gameMode === 3) { // AI vs AI
+                moveAIPaddle(paddle1, 1);
+            } else { // Human Player 1
+                if (!paddle1.isFrozen && !paddle1.isAshes) {
+                    if (keys.ArrowRight) paddle1.dx = 5;
+                    else if (keys.ArrowLeft) paddle1.dx = -5;
+                    else paddle1.dx *= 0.8;
+                    paddle1.x += paddle1.dx;
+                } else paddle1.dx = 0;
+                // Human Player 1 Shooting
+                if (keys.Space) {
+                    if (paddle1.hasLaser) {
+                        shootLaser(1);
+                        paddle1.hasLaser = false;
+                        player1LaserIndicator.style.display = "none";
+                        keys.Space = false; // Consume key press
+                    } else if (paddle1.hasFreezeRay) {
+                        shootFreezeRay(1);
+                        paddle1.hasFreezeRay = false;
+                        player1PowerUpIndicator.style.display = "none";
+                        keys.Space = false; // Consume key press
+                    }
+                }
+            }
+
+            // Player 2 Movement
+            if (gameMode === 2) { // Human Player 2
+                if (!paddle2.isFrozen && !paddle2.isAshes) {
+                    if (keys.d) paddle2.dx = 5;
+                    else if (keys.a) paddle2.dx = -5;
+                    else paddle2.dx *= 0.8;
+                    paddle2.x += paddle2.dx;
+                } else paddle2.dx = 0;
+                 // Human Player 2 Shooting
+                 if (keys.s) {
+                     if (paddle2.hasLaser) {
+                         shootLaser(2);
+                         paddle2.hasLaser = false;
+                         player2LaserIndicator.style.display = "none";
+                         keys.s = false; // Consume key press
+                     } else if (paddle2.hasFreezeRay) {
+                         shootFreezeRay(2);
+                         paddle2.hasFreezeRay = false;
+                         player2PowerUpIndicator.style.display = "none";
+                         keys.s = false; // Consume key press
+                     }
+                 }
+            } else { // AI Player 2 (Single Player or AI vs AI)
+                moveAIPaddle(paddle2, 2);
+            }
+
+            // Update timers
+            const timeDelta = 1 / 60; // Assuming 60 FPS
+            [paddle1, paddle2].forEach((paddle, index) => {
+                if (paddle.isFrozen) {
+                    paddle.frozenTimeRemaining -= timeDelta;
+                    if (paddle.frozenTimeRemaining <= 0) {
+                        paddle.isFrozen = false;
+                        debug(`Player ${index + 1} unfrozen!`);
+                    }
+                }
+                if (paddle.isWide) {
+                    paddle.widePaddleTimeRemaining -= timeDelta;
+                    if (paddle.widePaddleTimeRemaining <= 0) {
+                        paddle.isWide = false;
+                        paddle.x += (paddle.width - paddle.originalWidth) / 2;
+                        paddle.width = paddle.originalWidth;
+                        debug(`Player ${index + 1} wide paddle expired`);
+                    }
+                }
+                if (paddle.isAshes) {
+                    paddle.ashesTimeRemaining -= timeDelta;
+                    if (paddle.ashesTimeRemaining <= 0) {
+                        paddle.isAshes = false;
+                        debug(`Player ${index + 1} returned from ashes!`);
+                    }
+                }
+            });
+
+            // Paddle bounds check
+            paddle1.x = Math.max(0, Math.min(canvas.width - paddle1.width, paddle1.x));
+            paddle2.x = Math.max(0, Math.min(canvas.width - paddle2.width, paddle2.x));
+        }
+
+        // Function to shoot a freeze ray
+        function shootFreezeRay(player) {
+            const paddle = player === 1 ? paddle1 : paddle2;
+            const ray = new FreezeRay(paddle.x + paddle.width / 2 - 2.5, player === 1 ? paddle.y - 15 : paddle.y + paddle.height + 10, player);
+            freezeRays.push(ray);
+            soundFX.playFreezeRay(); // Play sound when shooting
+            debug(`Player ${player} shot a freeze ray`);
+        }
+
+        // Function to shoot a laser beam
+        function shootLaser(player) {
+            const paddle = player === 1 ? paddle1 : paddle2;
+            const beam = new LaserBeam(paddle.x + paddle.width / 2, player === 1 ? paddle.y - 10 : paddle.y + paddle.height + 10, player);
+            laserBeams.push(beam);
+            soundFX.playLaserShoot(); // Play sound when shooting
+            debug(`Player ${player} shot a laser beam!`);
+        }
+
+        // Function to return to main menu
+        function returnToStartScreen() {
+            debug("Returning to main menu");
+            if (gameLoop) cancelAnimationFrame(gameLoop);
+            gameLoop = null;
+            window.location.href = 'index.html'; // Navigate back to index.html
+        }
+
+        // Reset ball
+        function resetBall(ballIndex) {
+            const ball = balls[ballIndex];
+            const speed = 3;
+            const angle = Math.random() * Math.PI / 2 + Math.PI / 4;
+            if (ball.owner === 1) {
+                ball.x = canvas.width / 2;
+                ball.y = canvas.height - 50;
+                ball.dx = speed * Math.cos(angle) * (Math.random() > 0.5 ? 1 : -1);
+                ball.dy = -speed * Math.sin(angle);
+                ball.lastHitBy = 1;
+            } else {
+                ball.x = canvas.width / 2;
+                ball.y = 50;
+                ball.dx = speed * Math.cos(angle) * (Math.random() > 0.5 ? 1 : -1);
+                ball.dy = speed * Math.sin(angle);
+                ball.lastHitBy = 2;
+            }
+            debug(`Ball ${ballIndex} reset`);
+        }
+
+        // Reset bricks
+        function resetBricks() {
+            initBricks();
+        }
+
+        // Initialize and start game based on URL parameter
+        function initializeGame(mode) {
+            gameMode = mode;
+            debug(`Starting game in mode: ${mode}`);
+            balls.forEach((_, index) => resetBall(index));
+            resetBricks(); // Calls initBricks
+            paddle1.score = 0;
+            paddle2.score = 0;
+            // Reset all states
+            [paddle1, paddle2].forEach(p => {
+                p.hasFreezeRay = false; p.isFrozen = false; p.frozenTimeRemaining = 0;
+                p.isWide = false; p.widePaddleTimeRemaining = 0; p.width = p.originalWidth;
+                p.hasLaser = false; p.isAshes = false; p.ashesTimeRemaining = 0;
+                p.x = 350; // Reset position
+            });
+            player1PowerUpIndicator.style.display = "none";
+            player2PowerUpIndicator.style.display = "none";
+            player1LaserIndicator.style.display = "none";
+            player2LaserIndicator.style.display = "none";
+            freezeRays.length = 0; // Clear active rays/beams
+            laserBeams.length = 0;
+            particles.length = 0; // Clear particles
+
+            if (gameLoop) cancelAnimationFrame(gameLoop);
+
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                movePaddles();
+
+                // Update & Draw Particles
+                 for (let i = particles.length - 1; i >= 0; i--) {
+                     particles[i].update();
+                     particles[i].draw(ctx);
+                     if (particles[i].life <= 0) particles.splice(i, 1);
+                 }
+                 // Update & Draw Freeze Rays
+                 for (let i = freezeRays.length - 1; i >= 0; i--) {
+                     freezeRays[i].update();
+                     freezeRays[i].draw();
+                     if (!freezeRays[i].active) freezeRays.splice(i, 1);
+                 }
+                 // Update & Draw Laser Beams
+                 for (let i = laserBeams.length - 1; i >= 0; i--) {
+                     laserBeams[i].update();
+                     laserBeams[i].draw();
+                     if (!laserBeams[i].active) laserBeams.splice(i, 1);
+                 }
+
+                balls.forEach((ball, index) => {
+                    ball.x += ball.dx;
+                    ball.y += ball.dy;
+                    if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) {
+                        ball.dx = -ball.dx;
+                        soundFX.playWallHit();
+                    }
+                    checkCollision(paddle1, ball) || checkCollision(paddle2, ball);
+                    checkBrickCollision(ball);
+                    if (ball.y + ball.radius > canvas.height) {
+                        paddle2.score += 10;
+                        soundFX.playScore();
+                        resetBall(index);
+                    }
+                    if (ball.y - ball.radius < 0) {
+                        paddle1.score += 10;
+                        soundFX.playScore();
+                        resetBall(index);
+                    }
+                });
+                drawPaddle(paddle1);
+                drawPaddle(paddle2);
+                drawBall();
+                drawBricks();
+                drawScore();
+                gameLoop = requestAnimationFrame(animate);
+            }
+            gameLoop = requestAnimationFrame(animate);
+            soundFX.playGameStart();
+        }
+
+        // Ball collision with paddles
+        function checkCollision(paddle, ball) {
+            if (paddle.isAshes) return false;
+            const paddleCenter = paddle.x + (paddle.width / 2);
+            const isBottomPaddle = (paddle === paddle1);
+
+            if (ball.x + ball.radius > paddle.x && ball.x - ball.radius < paddle.x + paddle.width &&
+                ball.y + ball.radius > paddle.y && ball.y - ball.radius < paddle.y + paddle.height) {
+
+                if ((isBottomPaddle && ball.dy > 0) || (!isBottomPaddle && ball.dy < 0)) {
+                    const impactPoint = (ball.x - paddleCenter) / (paddle.width / 2);
+                    const maxAngle = Math.PI / 3;
+                    const newAngle = impactPoint * maxAngle;
+                    const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+                    const newSpeed = speed * (1.0 + Math.abs(impactPoint) * 0.2);
+
+                    ball.dx = newSpeed * Math.sin(newAngle);
+                    ball.dy = (isBottomPaddle ? -1 : 1) * newSpeed * Math.cos(newAngle);
+                    ball.y = isBottomPaddle ? paddle.y - ball.radius : paddle.y + paddle.height + ball.radius;
+                    ball.lastHitBy = isBottomPaddle ? 1 : 2;
+
+                    soundFX.playPaddleHit(Math.abs(impactPoint));
+                    debug(`Player ${ball.lastHitBy} hit ball`);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Enhanced sound effects using Web Audio API
+        const soundFX = {
+            audioContext: null,
+            gainNode: null,
+            sounds: {}, // To store loaded buffers
+
+            init() {
+                if (!this.audioContext) {
+                    try {
+                        debug("Attempting to create AudioContext...");
+                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        if (this.audioContext) {
+                            debug(`AudioContext created. Initial state: ${this.audioContext.state}`);
+                            this.gainNode = this.audioContext.createGain();
+                            this.gainNode.gain.value = 0.3; // Master volume
+                            this.gainNode.connect(this.audioContext.destination);
+                            debug("Master GainNode created and connected.");
+                            // Resume context if suspended (important for autoplay policy)
+                            if (this.audioContext.state === 'suspended') {
+                                debug("AudioContext is suspended, attempting to resume...");
+                                // It's best practice to resume on user interaction, but we'll try here too.
+                                this.audioContext.resume().then(() => {
+                                    debug(`AudioContext resumed successfully. New state: ${this.audioContext.state}`);
+                                }).catch(e => console.error("Error resuming AudioContext:", e));
+                            }
+                        } else {
+                             console.error("Failed to create AudioContext.");
+                        }
+                    } catch (e) {
+                        console.error("Web Audio API not supported or error during init:", e);
+                        this.audioContext = null; // Ensure it's null if failed
+                    }
+                } else {
+                     // If context already exists, check if it needs resuming
+                     if (this.audioContext.state === 'suspended') {
+                         debug("AudioContext exists but is suspended, attempting to resume...");
+                         this.audioContext.resume().then(() => {
+                             debug(`AudioContext resumed successfully on subsequent init call. New state: ${this.audioContext.state}`);
+                         }).catch(e => console.error("Error resuming AudioContext:", e));
+                     } else {
+                         debug(`AudioContext already initialized and in state: ${this.audioContext.state}`);
+                     }
+                }
+                return this.audioContext !== null;
+            },
+
+            // Generic sound player using oscillators (fallback)
+            _playNote(freq, type = 'sine', duration = 0.1, vol = 0.5) {
+                // Ensure context is initialized
+                if (!this.init()) {
+                    debug("Cannot play note - AudioContext failed to initialize.");
+                    return;
+                }
+
+                // Check if context is suspended and try to resume (best effort)
+                // This should ideally happen in response to the *first* user gesture on the page.
+                if (this.audioContext.state === 'suspended') {
+                    debug("AudioContext is suspended, attempting to resume before playing note...");
+                    this.audioContext.resume().then(() => {
+                        debug(`AudioContext resumed successfully. State: ${this.audioContext.state}`);
+                        // If resumed successfully, try playing the note again immediately
+                        if (this.audioContext.state === 'running') {
+                            this._actuallyPlayNote(freq, type, duration, vol);
+                        }
+                    }).catch(e => console.error("Error resuming AudioContext before playNote:", e));
+                    // Don't play the note immediately if suspended, wait for resume attempt
+                    return;
+                }
+
+                // If context is already running, play the note
+                if (this.audioContext.state === 'running') {
+                    this._actuallyPlayNote(freq, type, duration, vol);
+                } else {
+                     debug(`Cannot play note - AudioContext state is: ${this.audioContext.state}`);
+                }
+            },
+
+            // Helper function to actually create and play the oscillator node
+            _actuallyPlayNote(freq, type, duration, vol) {
+                 debug(`Playing note: freq=${freq}, type=${type}, duration=${duration}, vol=${vol}`);
+                 const osc = this.audioContext.createOscillator();
+                 const gain = this.audioContext.createGain();
+                osc.connect(gain);
+                gain.connect(this.gainNode); // Connect to master gain
+                osc.type = type;
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(vol * this.gainNode.gain.value, this.audioContext.currentTime); // Apply master volume
+                gain.gain.exponentialRampToValueAtTime(0.0001, this.audioContext.currentTime + duration);
+                osc.start(this.audioContext.currentTime);
+                osc.stop(this.audioContext.currentTime + duration);
+            },
+
+            // Specific sound effects
+            playPaddleHit(impact = 0.5) { this._playNote(440 + impact * 220, 'square', 0.05, 0.4); },
+            playWallHit() { this._playNote(220, 'sine', 0.08, 0.3); },
+            playBrickBreak() { this._playNote(880, 'triangle', 0.1, 0.5); }, // Simple tone for now
+            playPowerUp() { this._playNote(660, 'sine', 0.1); this._playNote(880, 'sine', 0.1, 0.5, 0.05); }, // Quick ascending notes
+            playLaserShoot() { this._playNote(1200, 'sawtooth', 0.15, 0.6); this._playNote(600, 'sawtooth', 0.15, 0.4, 0.02); }, // Descending pitch
+            playLaserHit() { this._playNote(200, 'square', 0.2, 0.7); }, // Low buzz
+            playFreezeRay() { this._playNote(1000, 'sine', 0.3, 0.5); this._playNote(1500, 'sine', 0.3, 0.3, 0.1); }, // Higher pitch, slight shimmer
+            playScore() { this._playNote(523, 'sine', 0.05); this._playNote(659, 'sine', 0.05, 0.5, 0.05); this._playNote(784, 'sine', 0.1, 0.5, 0.1); }, // Ascending notes
+            playGameStart() { this._playNote(261, 'triangle', 0.1); this._playNote(392, 'triangle', 0.1, 0.5, 0.1); this._playNote(523, 'triangle', 0.2, 0.5, 0.2); }, // Simple melody
+            playLevelComplete() { this._playNote(523, 'square', 0.1); this._playNote(784, 'square', 0.1, 0.5, 0.1); this._playNote(1046, 'square', 0.3, 0.5, 0.2); }, // Higher melody
+            playMiss() { this._playNote(100, 'sawtooth', 0.15, 0.3); } // Low, short buzz
+        };
+
+        // Sound manager (Placeholder - using soundFX directly for now)
+        const soundManager = {
+            init() { soundFX.init(); },
+            play(soundName, volume = null) {
+                // Map old names to new functions if necessary, or call directly
+                if (typeof soundFX[soundName] === 'function') {
+                    soundFX[soundName](); // Assuming no args needed for simplicity here
+                } else {
+                    debug(`Sound not found: ${soundName}`);
+                }
+            },
+            startMusic() { debug("Background music not implemented yet."); },
+            stopMusic() {},
+            toggleMute() {
+                 if (!soundFX.init()) return false;
+                 const currentVolume = soundFX.gainNode.gain.value;
+                 soundFX.gainNode.gain.value = currentVolume > 0 ? 0 : 0.3; // Toggle between 0 and default
+                 debug(`Mute toggled: ${soundFX.gainNode.gain.value === 0}`);
+                 return soundFX.gainNode.gain.value === 0;
+             }
+        };
+
+        // Get mode from URL and start the game when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const modeParam = urlParams.get('mode');
+            const selectedMode = parseInt(modeParam);
+
+            if (!isNaN(selectedMode) && selectedMode >= 1 && selectedMode <= 3) {
+                 // Attempt to initialize audio context on load (might require user interaction later)
+                 soundManager.init();
+                 initializeGame(selectedMode);
+            } else {
+                 // Handle invalid mode - maybe redirect back or show error
+                 console.error("Invalid game mode specified in URL. Redirecting to menu.");
+                 window.location.href = 'index.html';
+            }
+        });
+
+    </script>
+</body>
+</html>

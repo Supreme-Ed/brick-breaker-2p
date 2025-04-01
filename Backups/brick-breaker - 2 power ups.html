@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Two-Player Brick Breaker</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+            background-color: #000;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #startScreen {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px;
+            font-family: Arial, sans-serif;
+        }
+        .button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .button:hover {
+            background: #45a049;
+        }
+        .controls {
+            margin: 20px;
+            text-align: left;
+            font-size: 14px;
+        }
+        /* Power-up indicator styles */
+        .power-up-indicator {
+            position: absolute;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+        #player1PowerUp {
+            bottom: 10px;
+            left: 10px;
+        }
+        #player2PowerUp {
+            top: 10px;
+            right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="startScreen">
+        <h1>Brick Breaker</h1>
+        <div class="controls">
+            <h2>Controls:</h2>
+            <p><strong>Player 1 (Bottom):</strong> Left/Right Arrow Keys, Space to shoot freeze ray</p>
+            <p><strong>Player 2 (Top):</strong> A/D Keys, S to shoot freeze ray</p>
+            <p>Press <strong>ESC</strong> key to exit the game to main menu</p>
+            <p>Break all bricks to win extra points!</p>
+            <p>Hit blue bricks to get the freeze ray power-up!</p>
+            <p>Hit purple bricks to get the wide paddle power-up!</p>
+        </div>
+        <button class="button" onclick="startGame(1)">Single Player</button>
+        <button class="button" onclick="startGame(2)">Two Players</button>
+        <button class="button" onclick="startGame(3)">AI vs AI</button>
+    </div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="player1PowerUp" class="power-up-indicator" style="display: none;">Freeze Ray Ready!</div>
+    <div id="player2PowerUp" class="power-up-indicator" style="display: none;">Freeze Ray Ready!</div>
+
+    <script>
+        // Debug helper - logs to console for easier debugging
+        function debug(message) {
+            console.log(`[DEBUG] ${message}`);
+        }
+
+        // Game setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const player1PowerUpIndicator = document.getElementById('player1PowerUp');
+        const player2PowerUpIndicator = document.getElementById('player2PowerUp');
+        let gameMode = 0; // 0 = not started, 1 = single player, 2 = two players, 3 = AI vs AI
+        let gameLoop;
+
+        // Game objects
+        const paddle1 = {
+            x: 350,
+            y: canvas.height - 30,
+            width: 100,
+            height: 10,
+            dx: 0,
+            score: 0,
+            curvature: 0.3, // Curvature factor for concave shape
+            hasFreezeRay: false,
+            isFrozen: false,
+            frozenTimeRemaining: 0,
+            isWide: false, // New property for wide paddle power-up
+            widePaddleTimeRemaining: 0, // Timer for wide paddle duration
+            originalWidth: 100 // Store original width to restore later
+        };
+
+        const paddle2 = {
+            x: 350,
+            y: 30,
+            width: 100,
+            height: 10,
+            dx: 0,
+            score: 0,
+            curvature: 0.3, // Curvature factor for concave shape
+            hasFreezeRay: false,
+            isFrozen: false,
+            frozenTimeRemaining: 0,
+            isWide: false, // New property for wide paddle power-up
+            widePaddleTimeRemaining: 0, // Timer for wide paddle duration
+            originalWidth: 100 // Store original width to restore later
+        };
+
+        // Freeze ray objects
+        const freezeRays = [];
+
+        // Class for freeze ray
+        class FreezeRay {
+            constructor(x, y, player) {
+                this.x = x;
+                this.y = y;
+                this.width = 5;
+                this.height = player === 1 ? -canvas.height : canvas.height; // Negative for upward ray
+                this.player = player; // Player who shot the ray
+                this.speed = 12; // Speed of the ray
+                this.active = true; // Whether ray is still active
+                this.alphaValue = 1.0; // For fade-out animation
+                this.hitTarget = false; // If ray hit the target
+                this.progress = 0; // 0 to 1, how far the ray has traveled
+            }
+            
+            update() {
+                // Once ray hits, start fading
+                if (this.hitTarget) {
+                    this.alphaValue -= 0.05; // Fade out
+                    if (this.alphaValue <= 0) {
+                        this.active = false; // Remove ray when fully faded
+                    }
+                    return;
+                }
+                
+                // Calculate ray progress (0 to 1)
+                this.progress += this.speed / Math.abs(this.height);
+                
+                // Check if ray hit opponent paddle
+                if (this.progress >= 1) {
+                    const targetPaddle = this.player === 1 ? paddle2 : paddle1;
+                    const hitX = this.x;
+                    
+                    // Check if ray hit the paddle horizontally
+                    if (hitX >= targetPaddle.x && hitX <= targetPaddle.x + targetPaddle.width) {
+                        // Hit! Freeze the paddle
+                        targetPaddle.isFrozen = true;
+                        targetPaddle.frozenTimeRemaining = 10; // 10 seconds freeze
+                        debug(`Player ${this.player === 1 ? 2 : 1} frozen for 10 seconds!`);
+                        
+                        this.hitTarget = true;
+                        playBeep(250, 0.3); // Freeze hit sound
+                    } else {
+                        debug(`Freeze ray missed!`);
+                        this.hitTarget = true;
+                        playBeep(150, 0.1); // Miss sound
+                    }
+                }
+            }
+            
+            draw() {
+                ctx.save();
+                
+                if (this.hitTarget) {
+                    // Draw fade out effect when hit
+                    ctx.globalAlpha = this.alphaValue;
+                    ctx.beginPath();
+                    ctx.strokeStyle = "#00FFFF";
+                    ctx.lineWidth = this.width;
+                    ctx.moveTo(this.x, this.y);
+                    ctx.lineTo(this.x, this.y + this.height * this.progress);
+                    ctx.stroke();
+                    ctx.closePath();
+                } else {
+                    // Draw active ray
+                    // Outer glow
+                    ctx.beginPath();
+                    ctx.strokeStyle = "#80FFFF";
+                    ctx.lineWidth = this.width + 4;
+                    ctx.globalAlpha = 0.5;
+                    ctx.moveTo(this.x, this.y);
+                    ctx.lineTo(this.x, this.y + this.height * this.progress);
+                    ctx.stroke();
+                    ctx.closePath();
+                    
+                    // Inner beam
+                    ctx.beginPath();
+                    ctx.strokeStyle = "#00FFFF";
+                    ctx.lineWidth = this.width;
+                    ctx.globalAlpha = 1.0;
+                    ctx.moveTo(this.x, this.y);
+                    ctx.lineTo(this.x, this.y + this.height * this.progress);
+                    ctx.stroke();
+                    ctx.closePath();
+                    
+                    // Tip effect (circular)
+                    ctx.beginPath();
+                    ctx.fillStyle = "#FFFFFF";
+                    ctx.arc(this.x, this.y + this.height * this.progress, this.width + 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.closePath();
+                }
+                
+                ctx.restore();
+            }
+        }
+
+        // Update ball to be an array of two balls
+        const balls = [
+            {
+                x: canvas.width / 2,
+                y: canvas.height - 50, // Bottom player's ball
+                radius: 8,
+                dx: 2,
+                dy: -2,
+                owner: 1, // Player 1's ball
+                lastHitBy: 1 // Track which player last hit the ball
+            },
+            {
+                x: canvas.width / 2,
+                y: 50, // Top player's ball
+                radius: 8,
+                dx: -2,
+                dy: 2,
+                owner: 2, // Player 2's ball
+                lastHitBy: 2 // Track which player last hit the ball
+            }
+        ];
+
+        // Brick configuration
+        const brickRowCount = 3;
+        const brickColumnCount = 8;
+        const brickWidth = 75;
+        const brickHeight = 20;
+        const brickPadding = 10;
+        const brickOffsetTop = canvas.height / 2 - (brickRowCount * (brickHeight + brickPadding)) / 2;
+        const brickOffsetLeft = (canvas.width - (brickColumnCount * (brickWidth + brickPadding))) / 2;
+
+        // Create bricks array
+        const bricks = [];
+        let currentPattern = 0; // Track the current pattern
+        const BRICK_NORMAL = 1;
+        const BRICK_POWER_UP = 2;
+        const BRICK_WIDE_PADDLE = 3; // New constant for wide paddle power-up
+
+        // Initialize bricks with different patterns
+        function initBricks() {
+            debug("Initializing bricks");
+            
+            // Clear existing bricks
+            for (let c = 0; c < brickColumnCount; c++) {
+                bricks[c] = [];
+                for (let r = 0; r < brickRowCount; r++) {
+                    bricks[c][r] = { status: 0 };
+                }
+            }
+            
+            // Choose a new pattern, different from the current one
+            let newPattern;
+            do {
+                newPattern = Math.floor(Math.random() * 5); // 5 different patterns
+            } while (newPattern === currentPattern && 5 > 1);
+            
+            currentPattern = newPattern;
+            debug(`Selected brick pattern: ${currentPattern}`);
+            
+            // Apply the selected pattern
+            switch (currentPattern) {
+                case 0:
+                    // Standard grid pattern
+                    createStandardPattern();
+                    break;
+                case 1:
+                    // Checkerboard pattern
+                    createCheckerboardPattern();
+                    break;
+                case 2:
+                    // Diamond pattern
+                    createDiamondPattern();
+                    break;
+                case 3:
+                    // Random pattern
+                    createRandomPattern();
+                    break;
+                case 4:
+                    // Zigzag pattern
+                    createZigzagPattern();
+                    break;
+            }
+            
+            // Add power-up bricks (blue bricks)
+            addPowerUpBricks();
+            
+            debug(`Created pattern with ${countActiveBricks()} active bricks`);
+        }
+        
+        // Add some power-up bricks to the layout
+        function addPowerUpBricks() {
+            // Add 2-3 power-up bricks
+            const numPowerUps = 2 + Math.floor(Math.random() * 2);
+            let powerUpsAdded = 0;
+            
+            while (powerUpsAdded < numPowerUps) {
+                const c = Math.floor(Math.random() * brickColumnCount);
+                const r = Math.floor(Math.random() * brickRowCount);
+                
+                // Only convert active normal bricks to power-up bricks
+                if (bricks[c][r].status === BRICK_NORMAL) {
+                    bricks[c][r].status = BRICK_POWER_UP;
+                    bricks[c][r].color = "#0088FF"; // Blue color for power-up bricks
+                    powerUpsAdded++;
+                    debug(`Added power-up brick at [${c},${r}]`);
+                }
+            }
+            
+            // Add 2-3 wide paddle power-up bricks (purple)
+            const numWidePaddlePowerUps = 2 + Math.floor(Math.random() * 2);
+            let widePaddlePowerUpsAdded = 0;
+            
+            while (widePaddlePowerUpsAdded < numWidePaddlePowerUps) {
+                const c = Math.floor(Math.random() * brickColumnCount);
+                const r = Math.floor(Math.random() * brickRowCount);
+                
+                // Only convert active normal bricks to wide paddle power-up bricks
+                if (bricks[c][r].status === BRICK_NORMAL) {
+                    bricks[c][r].status = BRICK_WIDE_PADDLE;
+                    bricks[c][r].color = "#8800CC"; // Purple color for wide paddle power-up bricks
+                    widePaddlePowerUpsAdded++;
+                    debug(`Added wide paddle power-up brick at [${c},${r}]`);
+                }
+            }
+        }
+
+        // Helper to count active bricks
+        function countActiveBricks() {
+            let count = 0;
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    if (bricks[c][r].status > 0) count++;
+                }
+            }
+            return count;
+        }
+
+        // Standard grid pattern
+        function createStandardPattern() {
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    const hue = (c * r * 360) / (brickColumnCount * brickRowCount);
+                    const saturation = 70 + Math.random() * 20;
+                    const lightness = 50 + Math.random() * 10;
+                    bricks[c][r] = { 
+                        x: 0, 
+                        y: 0, 
+                        status: BRICK_NORMAL,
+                        color: `hsl(${hue}, ${saturation}%, ${lightness}%)`
+                    };
+                }
+            }
+        }
+
+        // Checkerboard pattern
+        function createCheckerboardPattern() {
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    const isActive = (c + r) % 2 === 0;
+                    const hue = (c * r * 360) / (brickColumnCount * brickRowCount);
+                    const saturation = 70 + Math.random() * 20;
+                    const lightness = 50 + Math.random() * 10;
+                    bricks[c][r] = { 
+                        x: 0, 
+                        y: 0, 
+                        status: isActive ? BRICK_NORMAL : 0,
+                        color: `hsl(${hue}, ${saturation}%, ${lightness}%)`
+                    };
+                }
+            }
+        }
+
+        // Diamond pattern
+        function createDiamondPattern() {
+            const centerC = Math.floor(brickColumnCount / 2);
+            const centerR = Math.floor(brickRowCount / 2);
+            const maxDistance = Math.max(centerC, centerR) + 1;
+            
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    // Manhattan distance to center
+                    const distance = Math.abs(c - centerC) + Math.abs(r - centerR);
+                    const isActive = distance < maxDistance;
+                    
+                    const hue = (distance * 360) / maxDistance;
+                    const saturation = 70 + Math.random() * 20;
+                    const lightness = 50 + Math.random() * 10;
+                    
+                    bricks[c][r] = { 
+                        x: 0, 
+                        y: 0, 
+                        status: isActive ? BRICK_NORMAL : 0,
+                        color: `hsl(${hue}, ${saturation}%, ${lightness}%)`
+                    };
+                }
+            }
+        }
+
+        // Random pattern
+        function createRandomPattern() {
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    const isActive = Math.random() > 0.3; // 70% chance of being active
+                    const hue = Math.random() * 360;
+                    const saturation = 70 + Math.random() * 20;
+                    const lightness = 50 + Math.random() * 10;
+                    
+                    bricks[c][r] = { 
+                        x: 0, 
+                        y: 0, 
+                        status: isActive ? BRICK_NORMAL : 0,
+                        color: `hsl(${hue}, ${saturation}%, ${lightness}%)`
+                    };
+                }
+            }
+        }
+
+        // Zigzag pattern
+        function createZigzagPattern() {
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    // Create a zigzag pattern
+                    const isActive = (c + r) % 3 !== 1;
+                    
+                    const hue = (c * 360) / brickColumnCount;
+                    const saturation = 70 + Math.random() * 20;
+                    const lightness = 50 + Math.random() * 10;
+                    
+                    bricks[c][r] = { 
+                        x: 0, 
+                        y: 0, 
+                        status: isActive ? BRICK_NORMAL : 0,
+                        color: `hsl(${hue}, ${saturation}%, ${lightness}%)`
+                    };
+                }
+            }
+        }
+
+        // Draw bricks
+        function drawBricks() {
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    const brick = bricks[c][r];
+                    if (brick.status > 0) { // Either normal or power-up brick
+                        // Compute the brick position on screen
+                        brick.x = c * (brickWidth + brickPadding) + brickOffsetLeft;
+                        brick.y = r * (brickHeight + brickPadding) + brickOffsetTop;
+                        
+                        // Draw the brick
+                        ctx.beginPath();
+                        ctx.rect(brick.x, brick.y, brickWidth, brickHeight);
+                        ctx.fillStyle = brick.color;
+                        ctx.fill();
+                        ctx.closePath();
+                        
+                        // Add sparkle effect for power-up bricks
+                        if (brick.status === BRICK_POWER_UP || brick.status === BRICK_WIDE_PADDLE) {
+                            ctx.beginPath();
+                            const sparkleX = brick.x + brickWidth / 2;
+                            const sparkleY = brick.y + brickHeight / 2;
+                            const sparkleSize = 5 + Math.sin(Date.now() / 200) * 2; // Pulsing effect
+                            
+                            // Draw sparkle
+                            ctx.moveTo(sparkleX, sparkleY - sparkleSize);
+                            ctx.lineTo(sparkleX + sparkleSize / 2, sparkleY - sparkleSize / 2);
+                            ctx.lineTo(sparkleX + sparkleSize, sparkleY);
+                            ctx.lineTo(sparkleX + sparkleSize / 2, sparkleY + sparkleSize / 2);
+                            ctx.lineTo(sparkleX, sparkleY + sparkleSize);
+                            ctx.lineTo(sparkleX - sparkleSize / 2, sparkleY + sparkleSize / 2);
+                            ctx.lineTo(sparkleX - sparkleSize, sparkleY);
+                            ctx.lineTo(sparkleX - sparkleSize / 2, sparkleY - sparkleSize / 2);
+                            ctx.closePath();
+                            
+                            ctx.fillStyle = brick.status === BRICK_POWER_UP ? "#FFFFFF" : "#FF88FF";
+                            ctx.fill();
+                        }
+                    }
+                }
+            }
+        }
+
+        // Update checkBrickCollision function
+        function checkBrickCollision(ball) {
+            let bricksRemaining = false;
+            
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    const brick = bricks[c][r];
+                    if (brick.status > 0) {
+                        bricksRemaining = true;
+                        if (ball.x + ball.radius > brick.x && 
+                            ball.x - ball.radius < brick.x + brickWidth &&
+                            ball.y + ball.radius > brick.y && 
+                            ball.y - ball.radius < brick.y + brickHeight) {
+                            ball.dy = -ball.dy;
+                            
+                            // Check if this is a power-up brick
+                            if (brick.status === BRICK_POWER_UP) {
+                                // Give freeze ray power-up to player who hit the brick
+                                const player = ball.lastHitBy;
+                                const paddle = player === 1 ? paddle1 : paddle2;
+                                paddle.hasFreezeRay = true;
+                                
+                                // Update power-up indicator
+                                if (player === 1) {
+                                    player1PowerUpIndicator.style.display = "block";
+                                } else {
+                                    player2PowerUpIndicator.style.display = "block";
+                                }
+                                
+                                debug(`Player ${player} got freeze ray power-up!`);
+                                playBeep(600, 0.2); // Special sound for power-up
+                            }
+                            // Check if this is a wide paddle power-up brick
+                            else if (brick.status === BRICK_WIDE_PADDLE) {
+                                // Give wide paddle power-up to player who hit the brick
+                                const player = ball.lastHitBy;
+                                const paddle = player === 1 ? paddle1 : paddle2;
+                                
+                                // Apply wide paddle power-up
+                                if (!paddle.isWide) {
+                                    paddle.originalWidth = paddle.width; // Store original width
+                                }
+                                
+                                // Calculate new width (100% wider - double size)
+                                paddle.width = paddle.originalWidth * 2.0;
+                                
+                                // Keep paddle centered at the same position
+                                paddle.x -= (paddle.width - paddle.originalWidth) / 2;
+                                
+                                // Set power-up status
+                                paddle.isWide = true;
+                                paddle.widePaddleTimeRemaining = 10; // 10 seconds duration
+                                
+                                debug(`Player ${player} got wide paddle power-up for 10 seconds!`);
+                                playBeep(500, 0.2); // Special sound for power-up
+                            }
+                            
+                            brick.status = 0;
+                            // Create breaking effect
+                            createBrickParticles(brick);
+                            // Add 5 points to the player who last hit the ball
+                            if (ball.lastHitBy === 1) {
+                                paddle1.score += 5;
+                                debug(`Player 1 scored 5 points for breaking a brick`);
+                            } else {
+                                paddle2.score += 5;
+                                debug(`${gameMode === 1 ? 'AI' : 'Player 2'} scored 5 points for breaking a brick`);
+                            }
+                            playBeep(300, 0.1);
+                            debug(`Brick hit at position [${c},${r}] - points to player ${ball.lastHitBy}`);
+                            return true;
+                        }
+                    }
+                }
+            }
+            
+            // If no bricks remaining, reset them
+            if (!bricksRemaining) {
+                debug("All bricks destroyed - resetting");
+                resetBricks();
+                // Add bonus points for clearing all bricks
+                paddle1.score += 20;
+                paddle2.score += 20;
+                playBeep(500, 0.3); // Special sound for clearing all bricks
+            }
+            
+            return false;
+        }
+
+        // Add brick particle system for breaking animation
+        const particles = [];
+        
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = 3;
+                this.speedX = (Math.random() - 0.5) * 8;
+                this.speedY = (Math.random() - 0.5) * 8;
+                this.gravity = 0.1;
+                this.life = 1.0; // Life value from 1 to 0
+                this.decay = 0.02; // How fast particle fades
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.speedY += this.gravity;
+                this.life -= this.decay;
+            }
+
+            draw(ctx) {
+                ctx.fillStyle = `rgba(${this.color}, ${this.life})`;
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+            }
+        }
+
+        // Function to create brick breaking effect
+        function createBrickParticles(brick) {
+            // Convert brick color from HSL to RGB
+            const temp = document.createElement('div');
+            temp.style.color = brick.color;
+            document.body.appendChild(temp);
+            const rgb = window.getComputedStyle(temp).color;
+            document.body.removeChild(temp);
+            
+            // Create particles
+            for (let i = 0; i < 20; i++) {
+                particles.push(new Particle(
+                    brick.x + brickWidth / 2,
+                    brick.y + brickHeight / 2,
+                    rgb.slice(4, -1) // Remove 'rgb(' and ')'
+                ));
+            }
+        }
+
+        // Controls
+        const keys = {
+            ArrowLeft: false,
+            ArrowRight: false,
+            a: false,
+            d: false,
+            Space: false, // For freeze ray
+            s: false,     // For freeze ray
+            Escape: false // For exiting to main menu
+        };
+
+        // Key down event
+        document.addEventListener('keydown', (e) => {
+            if (e.key in keys) {
+                keys[e.key] = true;
+                debug(`Key down: ${e.key}`);
+            }
+            // Additional handling for Space and S keys for freeze ray
+            if (e.key === ' ' || e.code === 'Space') {
+                keys.Space = true;
+            }
+            if (e.key === 's' || e.code === 'KeyS') {
+                keys.s = true;
+            }
+            if (e.key === 'Escape') {
+                keys.Escape = true;
+                // Return to the start screen if game is running
+                if (gameMode > 0) {
+                    returnToStartScreen();
+                }
+            }
+        });
+
+        // Key up event
+        document.addEventListener('keyup', (e) => {
+            if (e.key in keys) {
+                keys[e.key] = false;
+                debug(`Key up: ${e.key}`);
+            }
+            // Additional handling for Space and S keys for freeze ray
+            if (e.key === ' ' || e.code === 'Space') {
+                keys.Space = false;
+            }
+            if (e.key === 's' || e.code === 'KeyS') {
+                keys.s = false;
+            }
+            if (e.key === 'Escape') {
+                keys.Escape = false;
+            }
+        });
+
+        // Draw paddle
+        function drawPaddle(paddle) {
+            ctx.save();
+            
+            ctx.fillStyle = '#fff';
+            
+            ctx.beginPath();
+            
+            // Draw concave paddle using a path
+            const curveHeight = paddle.height * paddle.curvature;
+            const midX = paddle.x + paddle.width / 2;
+            
+            if (paddle === paddle1) {
+                // Bottom paddle - concave on top side
+                ctx.moveTo(paddle.x, paddle.y); // Top-left
+                ctx.lineTo(paddle.x + paddle.width, paddle.y); // Top-right
+                ctx.lineTo(paddle.x + paddle.width, paddle.y + paddle.height); // Bottom-right
+                ctx.lineTo(paddle.x, paddle.y + paddle.height); // Bottom-left
+                ctx.lineTo(paddle.x, paddle.y); // Back to top-left
+                
+                // Draw the concave curve on top
+                ctx.moveTo(paddle.x, paddle.y);
+                ctx.quadraticCurveTo(midX, paddle.y - curveHeight, paddle.x + paddle.width, paddle.y);
+            } else {
+                // Top paddle - concave on bottom side
+                ctx.moveTo(paddle.x, paddle.y); // Top-left
+                ctx.lineTo(paddle.x + paddle.width, paddle.y); // Top-right
+                ctx.lineTo(paddle.x + paddle.width, paddle.y + paddle.height); // Bottom-right
+                ctx.lineTo(paddle.x, paddle.y + paddle.height); // Bottom-left
+                ctx.lineTo(paddle.x, paddle.y); // Back to top-left
+                
+                // Draw the concave curve on bottom
+                ctx.moveTo(paddle.x, paddle.y + paddle.height);
+                ctx.quadraticCurveTo(midX, paddle.y + paddle.height + curveHeight, paddle.x + paddle.width, paddle.y + paddle.height);
+            }
+            
+            // Apply frozen effect if paddle is frozen
+            if (paddle.isFrozen) {
+                ctx.fillStyle = "#B0E0E6"; // Pale blue for frozen
+                
+                // Draw frozen timer
+                ctx.fill();
+                ctx.closePath();
+                
+                // Add frozen time indicator
+                ctx.fillStyle = "#FFFFFF";
+                ctx.font = "12px Arial";
+                ctx.fillText(`${Math.ceil(paddle.frozenTimeRemaining)}s`, paddle.x + paddle.width / 2 - 5, 
+                    paddle === paddle1 ? paddle.y - 10 : paddle.y + paddle.height + 20);
+                
+                // Add ice crystals
+                for (let i = 0; i < 5; i++) {
+                    ctx.beginPath();
+                    const xPos = paddle.x + paddle.width * (i / 4);
+                    const yPos = paddle === paddle1 ? paddle.y : paddle.y + paddle.height;
+                    const direction = paddle === paddle1 ? -1 : 1;
+                    
+                    ctx.moveTo(xPos, yPos);
+                    ctx.lineTo(xPos - 5, yPos + (8 * direction));
+                    ctx.lineTo(xPos, yPos + (12 * direction));
+                    ctx.lineTo(xPos + 5, yPos + (8 * direction));
+                    ctx.closePath();
+                    ctx.fillStyle = "#FFFFFF";
+                    ctx.globalAlpha = 0.7;
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                }
+            } else {
+                // Normal paddle color or wide paddle color
+                if (paddle.isWide) {
+                    ctx.fillStyle = paddle === paddle1 ? "#AA55FF" : "#AA55FF"; // Purple tint for wide paddle
+                    ctx.fill();
+                    ctx.closePath();
+                    
+                    // Add wide paddle time indicator
+                    ctx.fillStyle = "#FFFFFF";
+                    ctx.font = "12px Arial";
+                    ctx.fillText(`${Math.ceil(paddle.widePaddleTimeRemaining)}s`, paddle.x + paddle.width / 2 - 5, 
+                        paddle === paddle1 ? paddle.y - 10 : paddle.y + paddle.height + 20);
+                } else {
+                    // Normal paddle color
+                    ctx.fillStyle = paddle === paddle1 ? "#3498db" : "#e74c3c";
+                    ctx.fill();
+                    ctx.closePath();
+                }
+            }
+            
+            ctx.restore();
+        }
+
+        // Draw ball
+        function drawBall() {
+            balls.forEach(ball => {
+                ctx.beginPath();
+                ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                ctx.fillStyle = ball.owner === 1 ? '#ff4444' : '#44ff44'; // Different colors for each ball
+                ctx.fill();
+                ctx.closePath();
+            });
+        }
+
+        // Draw score
+        function drawScore() {
+            ctx.fillStyle = '#fff';
+            ctx.font = '24px Arial';
+            
+            // Determine player names based on game mode
+            let player1Name = "Player 1";
+            let player2Name = "Player 2";
+            
+            if (gameMode === 1) {
+                player2Name = "AI";
+            } else if (gameMode === 3) {
+                player1Name = "AI 1";
+                player2Name = "AI 2";
+            }
+            
+            ctx.fillText(`${player1Name}: ${paddle1.score}`, 20, canvas.height / 2 + 24);
+            ctx.fillText(`${player2Name}: ${paddle2.score}`, 20, canvas.height / 2 - 24);
+        }
+
+        // Move paddles
+        function movePaddles() {
+            // Calculate movement for Player 1
+            if (gameMode === 3) {
+                // AI vs AI mode - AI for paddle1
+                if (!paddle1.isFrozen) {
+                    // Improved ball tracking logic - prioritize balls that are:
+                    // 1. Owned by or last hit by this player
+                    // 2. Moving toward this paddle
+                    // 3. Closest to this paddle
+                    
+                    // Find balls moving toward this paddle (positive dy)
+                    const approachingBalls = balls.filter(ball => ball.dy > 0);
+                    
+                    let ballToTrack;
+                    
+                    if (approachingBalls.length > 0) {
+                        // First check if there's a ball owned by this player
+                        ballToTrack = approachingBalls.find(ball => ball.lastHitBy === 1 || ball.owner === 1);
+                        
+                        // If no owned ball, pick the closest approaching ball
+                        if (!ballToTrack) {
+                            // Sort by closeness to this paddle (vertically)
+                            approachingBalls.sort((a, b) => 
+                                (paddle1.y - a.y) - (paddle1.y - b.y)
+                            );
+                            ballToTrack = approachingBalls[0];
+                        }
+                    } else {
+                        // If no ball is approaching, track any ball
+                        ballToTrack = balls.find(ball => ball.lastHitBy === 1 || ball.owner === 1) || balls[0];
+                    }
+                    
+                    const targetX = ballToTrack.x - paddle1.width / 2;
+                    const diff = targetX - paddle1.x;
+                    
+                    // Add some randomness to make AI less perfect
+                    const randomness = (Math.random() - 0.5) * 15;
+                    
+                    // Smooth movement with error
+                    if (Math.abs(diff) > 10) {
+                        // Move faster when ball is further away
+                        const speedFactor = Math.min(0.2, 0.1 + Math.abs(diff) / 1000);
+                        paddle1.dx = diff * speedFactor + randomness * 0.05;
+                        
+                        // Limit AI paddle speed to match human player speed (5 pixels per frame)
+                        const maxSpeed = 5;
+                        if (paddle1.dx > maxSpeed) {
+                            paddle1.dx = maxSpeed;
+                        } else if (paddle1.dx < -maxSpeed) {
+                            paddle1.dx = -maxSpeed;
+                        }
+                    } else {
+                        paddle1.dx *= 0.8;
+                    }
+                    
+                    // Apply movement
+                    paddle1.x += paddle1.dx;
+                } else {
+                    // Frozen paddle can't move
+                    paddle1.dx = 0;
+                }
+            } else {
+                // Human player controls for paddle1
+                if (!paddle1.isFrozen) {
+                    if (keys.ArrowRight) {
+                        paddle1.dx = 5;
+                    } else if (keys.ArrowLeft) {
+                        paddle1.dx = -5;
+                    } else {
+                        // Apply friction to gradually stop paddle
+                        paddle1.dx *= 0.8;
+                    }
+                    
+                    // Apply movement
+                    paddle1.x += paddle1.dx;
+                } else {
+                    // Frozen paddle can't move
+                    paddle1.dx = 0;
+                }
+            }
+            
+            // Player 2 controls
+            if (gameMode === 2) {  // Only for 2-player mode (human control)
+                if (!paddle2.isFrozen) {
+                    if (keys.d) {
+                        paddle2.dx = 5;
+                    } else if (keys.a) {
+                        paddle2.dx = -5;
+                    } else {
+                        // Apply friction to gradually stop paddle
+                        paddle2.dx *= 0.8;
+                    }
+                    
+                    // Apply movement
+                    paddle2.x += paddle2.dx;
+                } else {
+                    // Frozen paddle can't move
+                    paddle2.dx = 0;
+                }
+            } else {
+                // If single player OR AI vs AI mode, implement AI for paddle2
+                if (!paddle2.isFrozen) {
+                    // Improved ball tracking logic - prioritize balls that are:
+                    // 1. Owned by or last hit by this player
+                    // 2. Moving toward this paddle
+                    // 3. Closest to this paddle
+                    
+                    // Find balls moving toward this paddle (negative dy)
+                    const approachingBalls = balls.filter(ball => ball.dy < 0);
+                    
+                    let ballToTrack;
+                    
+                    if (approachingBalls.length > 0) {
+                        // First check if there's a ball owned by this player
+                        ballToTrack = approachingBalls.find(ball => ball.lastHitBy === 2 || ball.owner === 2);
+                        
+                        // If no owned ball, pick the closest approaching ball
+                        if (!ballToTrack) {
+                            // Sort by closeness to this paddle (vertically)
+                            approachingBalls.sort((a, b) => 
+                                (a.y - paddle2.y) - (b.y - paddle2.y)
+                            );
+                            ballToTrack = approachingBalls[0];
+                        }
+                    } else {
+                        // If no ball is approaching, track any ball
+                        ballToTrack = balls.find(ball => ball.lastHitBy === 2 || ball.owner === 2) || balls[0];
+                    }
+                    
+                    const targetX = ballToTrack.x - paddle2.width / 2;
+                    const diff = targetX - paddle2.x;
+                    
+                    // Add some randomness to make AI less perfect
+                    const randomness = (Math.random() - 0.5) * 15;
+                    
+                    // Smooth movement with error
+                    if (Math.abs(diff) > 10) {
+                        // Move faster when ball is further away
+                        const speedFactor = Math.min(0.2, 0.1 + Math.abs(diff) / 1000);
+                        paddle2.dx = diff * speedFactor + randomness * 0.05;
+                        
+                        // Limit AI paddle speed to match human player speed (5 pixels per frame)
+                        const maxSpeed = 5;
+                        if (paddle2.dx > maxSpeed) {
+                            paddle2.dx = maxSpeed;
+                        } else if (paddle2.dx < -maxSpeed) {
+                            paddle2.dx = -maxSpeed;
+                        }
+                    } else {
+                        paddle2.dx *= 0.8;
+                    }
+                    
+                    // Apply movement
+                    paddle2.x += paddle2.dx;
+                } else {
+                    // Frozen paddle can't move
+                    paddle2.dx = 0;
+                }
+            }
+            
+            // Handle shooting freeze rays for Player 1
+            if (paddle1.hasFreezeRay) {
+                if (gameMode !== 3 && keys.Space) {
+                    // Human player 1 shoots freeze ray
+                    shootFreezeRay(1);
+                    paddle1.hasFreezeRay = false;
+                    player1PowerUpIndicator.style.display = "none";
+                    playBeep(350, 0.1);
+                    keys.Space = false; // Prevent holding the key
+                } else if (gameMode === 3) {
+                    // AI should shoot more strategically
+                    // Check if the opponent paddle is in a good alignment for a hit
+                    const paddleAlignmentThreshold = 20; // Acceptable offset for aiming
+                    const isAligned = Math.abs(paddle1.x + paddle1.width / 2 - paddle2.x - paddle2.width / 2) < paddleAlignmentThreshold;
+                    
+                    // Higher chance to shoot when aligned, small random chance otherwise
+                    if ((isAligned && Math.random() < 0.1) || Math.random() < 0.005) {
+                        // Position paddle to better aim before shooting
+                        const targetX = paddle2.x + paddle2.width / 2 - paddle1.width / 2;
+                        // If we're close enough to the target position, shoot
+                        if (Math.abs(paddle1.x - targetX) < 10 || isAligned) {
+                            shootFreezeRay(1);
+                            paddle1.hasFreezeRay = false;
+                            player1PowerUpIndicator.style.display = "none";
+                            playBeep(350, 0.1);
+                            debug("AI 1 shoots freeze ray at AI 2");
+                        }
+                    }
+                }
+            }
+            
+            // Handle shooting freeze rays for Player 2
+            if (paddle2.hasFreezeRay) {
+                if (gameMode === 2 && keys.s) {
+                    // Human player 2 shoots freeze ray
+                    shootFreezeRay(2);
+                    paddle2.hasFreezeRay = false;
+                    player2PowerUpIndicator.style.display = "none";
+                    playBeep(350, 0.1);
+                    keys.s = false; // Prevent holding the key
+                } else if (gameMode !== 2) {
+                    // AI should shoot more strategically
+                    // Check if the opponent paddle is in a good alignment for a hit
+                    const paddleAlignmentThreshold = 20; // Acceptable offset for aiming
+                    const isAligned = Math.abs(paddle2.x + paddle2.width / 2 - paddle1.x - paddle1.width / 2) < paddleAlignmentThreshold;
+                    
+                    // Higher chance to shoot when aligned, small random chance otherwise
+                    if ((isAligned && Math.random() < 0.1) || Math.random() < 0.005) {
+                        // Position paddle to better aim before shooting
+                        const targetX = paddle1.x + paddle1.width / 2 - paddle2.width / 2;
+                        // If we're close enough to the target position, shoot
+                        if (Math.abs(paddle2.x - targetX) < 10 || isAligned) {
+                            shootFreezeRay(2);
+                            paddle2.hasFreezeRay = false;
+                            player2PowerUpIndicator.style.display = "none";
+                            playBeep(350, 0.1);
+                            debug(`${gameMode === 1 ? 'AI' : 'AI 2'} shoots freeze ray at ${gameMode === 1 ? 'Player 1' : 'AI 1'}`);
+                        }
+                    }
+                }
+            }
+            
+            // Update frozen timers
+            if (paddle1.isFrozen) {
+                paddle1.frozenTimeRemaining -= 1/60; // Assuming 60 FPS
+                if (paddle1.frozenTimeRemaining <= 0) {
+                    paddle1.isFrozen = false;
+                    debug("Player 1 unfrozen!");
+                }
+            }
+            
+            if (paddle2.isFrozen) {
+                paddle2.frozenTimeRemaining -= 1/60; // Assuming 60 FPS
+                if (paddle2.frozenTimeRemaining <= 0) {
+                    paddle2.isFrozen = false;
+                    debug("Player 2 unfrozen!");
+                }
+            }
+            
+            // Update wide paddle timers
+            if (paddle1.isWide) {
+                paddle1.widePaddleTimeRemaining -= 1/60; // Assuming 60 FPS
+                if (paddle1.widePaddleTimeRemaining <= 0) {
+                    paddle1.isWide = false;
+                    // Reset paddle width to original and recenter
+                    paddle1.x += (paddle1.width - paddle1.originalWidth) / 2;
+                    paddle1.width = paddle1.originalWidth;
+                    debug("Player 1 wide paddle power-up expired");
+                }
+            }
+            
+            if (paddle2.isWide) {
+                paddle2.widePaddleTimeRemaining -= 1/60; // Assuming 60 FPS
+                if (paddle2.widePaddleTimeRemaining <= 0) {
+                    paddle2.isWide = false;
+                    // Reset paddle width to original and recenter
+                    paddle2.x += (paddle2.width - paddle2.originalWidth) / 2;
+                    paddle2.width = paddle2.originalWidth;
+                    debug("Player 2 wide paddle power-up expired");
+                }
+            }
+            
+            // Limit the paddles to not go off-screen
+            if (paddle1.x < 0) paddle1.x = 0;
+            if (paddle1.x + paddle1.width > canvas.width) paddle1.x = canvas.width - paddle1.width;
+            
+            if (paddle2.x < 0) paddle2.x = 0;
+            if (paddle2.x + paddle2.width > canvas.width) paddle2.x = canvas.width - paddle2.width;
+        }
+
+        // Function to shoot a freeze ray
+        function shootFreezeRay(player) {
+            const paddle = player === 1 ? paddle1 : paddle2;
+            const ray = new FreezeRay(
+                paddle.x + paddle.width / 2 - 2.5, // Center of paddle
+                player === 1 ? paddle.y - 15 : paddle.y + paddle.height, // Start from top/bottom of paddle
+                player
+            );
+            freezeRays.push(ray);
+            debug(`Player ${player} shot a freeze ray`);
+        }
+
+        // Check collision with paddle - improved to handle concave shape
+        function checkCollision(paddle, ball) {
+            // Basic rectangular collision check first
+            if (ball.x + ball.radius > paddle.x && 
+                ball.x - ball.radius < paddle.x + paddle.width) {
+                
+                // For bottom paddle (paddle1)
+                if (paddle === paddle1) {
+                    // Check if ball is at the right height to collide with paddle
+                    if (ball.y + ball.radius >= paddle.y && 
+                        ball.y - ball.radius <= paddle.y + paddle.height) {
+                        
+                        // Only count collision if ball is moving downward (toward paddle)
+                        if (ball.dy > 0) {
+                            // Unfreeze the paddle if it's frozen
+                            if (paddle.isFrozen) {
+                                paddle.isFrozen = false;
+                                paddle.frozenTimeRemaining = 0;
+                                debug("Player 1 unfrozen by ball hit!");
+                                playBeep(400, 0.2); // Special sound for unfreezing
+                            }
+                            
+                            // Update lastHitBy property
+                            ball.lastHitBy = 1;
+                            debug(`Ball now owned by Player 1`);
+                            
+                            // Calculate relative position horizontally (-1 to 1)
+                            const relativePosition = (ball.x - (paddle.x + paddle.width / 2)) / (paddle.width / 2);
+                            
+                            // Calculate new velocities
+                            const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+                            
+                            // Force a stronger bounce for more dynamic gameplay
+                            const strengthFactor = 1.05; // Slight speed increase on bounce
+                            const adjustedSpeed = speed * strengthFactor;
+                            
+                            // Apply deflection angle based on position
+                            // Center of paddle: straight up, edges: up to 75 degrees
+                            const bounceAngle = relativePosition * (Math.PI/2.4); // Max ~75 degrees
+                            
+                            // Set new velocities based on bounce angle
+                            ball.dx = adjustedSpeed * Math.sin(bounceAngle);
+                            ball.dy = -adjustedSpeed * Math.cos(bounceAngle);
+                            
+                            // Ensure minimum vertical component (at least 30% of speed)
+                            const minVertical = adjustedSpeed * 0.3;
+                            if (Math.abs(ball.dy) < minVertical) {
+                                ball.dy = ball.dy < 0 ? -minVertical : minVertical;
+                            }
+                            
+                            // Ensure the ball is outside the paddle
+                            ball.y = paddle.y - ball.radius - 1;
+                            
+                            debug(`Ball hit paddle1 at position ${relativePosition.toFixed(2)}, angle: ${(bounceAngle * 180 / Math.PI).toFixed(1)}°, dx: ${ball.dx.toFixed(2)}, dy: ${ball.dy.toFixed(2)}`);
+                            playBeep(150 + Math.abs(relativePosition) * 100, 0.1); // Varied pitch based on hit position
+                            
+                            return true;
+                        }
+                    }
+                }
+                // For top paddle (paddle2)
+                else if (paddle === paddle2) {
+                    // Check if ball is at the right height to collide with paddle
+                    if (ball.y + ball.radius >= paddle.y && 
+                        ball.y - ball.radius <= paddle.y + paddle.height) {
+                        
+                        // Only count collision if ball is moving upward (toward paddle)
+                        if (ball.dy < 0) {
+                            // Unfreeze the paddle if it's frozen
+                            if (paddle.isFrozen) {
+                                paddle.isFrozen = false;
+                                paddle.frozenTimeRemaining = 0;
+                                debug(`${gameMode === 1 ? 'AI' : 'Player 2'} unfrozen by ball hit!`);
+                                playBeep(400, 0.2); // Special sound for unfreezing
+                            }
+                            
+                            // Update lastHitBy property
+                            ball.lastHitBy = 2;
+                            debug(`Ball now owned by ${gameMode === 1 ? 'AI' : 'Player 2'}`);
+                            
+                            // Calculate relative position horizontally (-1 to 1)
+                            const relativePosition = (ball.x - (paddle.x + paddle.width / 2)) / (paddle.width / 2);
+                            
+                            // Calculate new velocities
+                            const speed = Math.sqrt(ball.dx * ball.dx + ball.dy * ball.dy);
+                            
+                            // Force a stronger bounce for more dynamic gameplay
+                            const strengthFactor = 1.05; // Slight speed increase on bounce
+                            const adjustedSpeed = speed * strengthFactor;
+                            
+                            // Apply deflection angle based on position
+                            // Center of paddle: straight down, edges: up to 75 degrees
+                            const bounceAngle = relativePosition * (Math.PI/2.4); // Max ~75 degrees
+                            
+                            // Set new velocities based on bounce angle
+                            ball.dx = adjustedSpeed * Math.sin(bounceAngle);
+                            ball.dy = adjustedSpeed * Math.cos(bounceAngle);
+                            
+                            // Ensure minimum vertical component (at least 30% of speed)
+                            const minVertical = adjustedSpeed * 0.3;
+                            if (Math.abs(ball.dy) < minVertical) {
+                                ball.dy = ball.dy < 0 ? -minVertical : minVertical;
+                            }
+                            
+                            // Ensure the ball is outside the paddle
+                            ball.y = paddle.y + paddle.height + ball.radius + 1;
+                            
+                            debug(`Ball hit paddle2 at position ${relativePosition.toFixed(2)}, angle: ${(bounceAngle * 180 / Math.PI).toFixed(1)}°, dx: ${ball.dx.toFixed(2)}, dy: ${ball.dy.toFixed(2)}`);
+                            playBeep(150 + Math.abs(relativePosition) * 100, 0.1); // Varied pitch based on hit position
+                            
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Reset ball
+        function resetBall(ballIndex) {
+            const ball = balls[ballIndex];
+            const speed = 3; // Consistent ball speed
+            const angle = Math.random() * Math.PI / 2 + Math.PI / 4; // Random angle between 45 and 135 degrees
+            
+            if (ball.owner === 1) {
+                ball.x = canvas.width / 2;
+                ball.y = canvas.height - 50;
+                // Calculate velocity components based on random angle (upward for player 1)
+                ball.dx = speed * Math.cos(angle) * (Math.random() > 0.5 ? 1 : -1); // Random left or right
+                ball.dy = -speed * Math.sin(angle); // Always upward for player 1
+                ball.lastHitBy = 1; // Reset lastHitBy to the ball owner
+            } else {
+                ball.x = canvas.width / 2;
+                ball.y = 50;
+                // Calculate velocity components based on random angle (downward for player 2)
+                ball.dx = speed * Math.cos(angle) * (Math.random() > 0.5 ? 1 : -1); // Random left or right
+                ball.dy = speed * Math.sin(angle); // Always downward for player 2
+                ball.lastHitBy = 2; // Reset lastHitBy to the ball owner
+            }
+            debug(`Ball ${ballIndex} reset: angle=${(angle * 180 / Math.PI).toFixed(2)}°, dx=${ball.dx.toFixed(2)}, dy=${ball.dy.toFixed(2)}`);
+        }
+
+        // Reset bricks
+        function resetBricks() {
+            initBricks();
+        }
+
+        // Add this near the top of your script section
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playBeep(frequency, duration) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.value = frequency;
+            
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+
+        // Function to return to start screen
+        function returnToStartScreen() {
+            debug("Returning to start screen");
+            // Cancel game loop
+            if (gameLoop) {
+                cancelAnimationFrame(gameLoop);
+                gameLoop = null;
+            }
+            
+            // Reset game state
+            gameMode = 0;
+            
+            // Display the start screen
+            startScreen.style.display = 'block';
+        }
+
+        // Start game
+        function startGame(mode) {
+            gameMode = mode;
+            debug(`Starting game in mode: ${mode === 1 ? 'Single Player' : mode === 2 ? 'Two Players' : 'AI vs AI'}`);
+            startScreen.style.display = 'none';
+            balls.forEach((_, index) => resetBall(index));
+            resetBricks();
+            paddle1.score = 0;
+            paddle2.score = 0;
+            paddle1.hasFreezeRay = false;
+            paddle2.hasFreezeRay = false;
+            paddle1.isFrozen = false;
+            paddle2.isFrozen = false;
+            paddle1.isWide = false;
+            paddle2.isWide = false;
+            player1PowerUpIndicator.style.display = "none";
+            player2PowerUpIndicator.style.display = "none";
+            audioContext.resume();
+            
+            if (gameLoop) {
+                cancelAnimationFrame(gameLoop);
+            }
+            
+            function animate() {
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Move paddles
+                movePaddles();
+
+                // Update and draw particles
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    particles[i].update();
+                    particles[i].draw(ctx);
+                    if (particles[i].life <= 0) {
+                        particles.splice(i, 1);
+                    }
+                }
+
+                // Update and draw freeze rays
+                for (let i = freezeRays.length - 1; i >= 0; i--) {
+                    freezeRays[i].update();
+                    freezeRays[i].draw();
+                    if (!freezeRays[i].active) {
+                        freezeRays.splice(i, 1);
+                    }
+                }
+
+                // Handle both balls
+                balls.forEach((ball, index) => {
+                    // Move ball
+                    ball.x += ball.dx;
+                    ball.y += ball.dy;
+
+                    // Ball collision with walls
+                    if (ball.x + ball.radius > canvas.width) {
+                        ball.x = canvas.width - ball.radius;
+                        ball.dx = -Math.abs(ball.dx);
+                        playBeep(200, 0.1);
+                        debug("Ball hit right wall");
+                    } else if (ball.x - ball.radius < 0) {
+                        ball.x = ball.radius;
+                        ball.dx = Math.abs(ball.dx);
+                        playBeep(200, 0.1);
+                        debug("Ball hit left wall");
+                    }
+
+                    // Ball collision with paddles
+                    if (checkCollision(paddle1, ball) || checkCollision(paddle2, ball)) {
+                        // The checkCollision function now handles all the physics
+                    }
+
+                    // Ball collision with bricks
+                    checkBrickCollision(ball);
+
+                    // Ball out of bounds
+                    if (ball.y + ball.radius > canvas.height) {
+                        paddle2.score += 10;
+                        playBeep(400, 0.2);
+                        debug(`Player 2 scored: ${paddle2.score}`);
+                        resetBall(index);
+                    }
+                    
+                    if (ball.y - ball.radius < 0) {
+                        paddle1.score += 10;
+                        playBeep(400, 0.2);
+                        debug(`Player 1 scored: ${paddle1.score}`);
+                        resetBall(index);
+                    }
+                });
+
+                // Draw game elements
+                drawPaddle(paddle1);
+                drawPaddle(paddle2);
+                drawBall();
+                drawBricks();
+                drawScore();
+                
+                // Continue animation
+                gameLoop = requestAnimationFrame(animate);
+            }
+            
+            // Start animation
+            gameLoop = requestAnimationFrame(animate);
+        }
+        
+        // Initialize bricks
+        initBricks();
+    </script>
+</body>
+</html>
