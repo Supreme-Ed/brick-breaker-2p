@@ -138,12 +138,19 @@ describe('Keyboard Controls', () => {
   test('Space key should trigger Player 1 power-ups', () => {
     // Create game objects
     const paddle1 = {
+      x: 350,
+      y: 550,
+      width: 100,
+      height: 10,
+      dx: 0,
+      isFrozen: false,
+      isAshes: false,
       hasFreezeRay: true,
       hasLaser: false
     };
     
     // Create keys object
-    const keys = { Space: false };
+    const keys = { Space: false, ArrowLeft: false, ArrowRight: false };
     
     // Mock power-up indicator
     const player1PowerUpIndicator = document.createElement('div');
@@ -167,10 +174,33 @@ describe('Keyboard Controls', () => {
       return null;
     }
     
+    // Function to simulate movePaddles behavior
+    function movePaddles() {
+      // Player 1 keyboard control
+      if (!paddle1.isFrozen && !paddle1.isAshes) {
+        if (keys.ArrowLeft && paddle1.x > 0) {
+          paddle1.x -= 5;
+          paddle1.dx = -5;
+        } else if (keys.ArrowRight && paddle1.x < 800 - paddle1.width) {
+          paddle1.x += 5;
+          paddle1.dx = 5;
+        } else {
+          paddle1.dx = 0;
+        }
+        
+        // Check for Space key to activate power-ups
+        if (keys.Space) {
+          return handlePowerUpActivation(paddle1, 'Space', player1PowerUpIndicator);
+        }
+      }
+      return null;
+    }
+    
     // Test Space key with freeze ray
     keys.Space = true;
     
-    const activatedPowerUp = handlePowerUpActivation(paddle1, 'Space', player1PowerUpIndicator);
+    // Call movePaddles to simulate game loop
+    const activatedPowerUp = movePaddles();
     
     // Assertions
     expect(activatedPowerUp).toBe('freezeRay');
@@ -192,12 +222,19 @@ describe('Keyboard Controls', () => {
   test('S key should trigger Player 2 power-ups', () => {
     // Create game objects
     const paddle2 = {
+      x: 350,
+      y: 50,
+      width: 100,
+      height: 10,
+      dx: 0,
+      isFrozen: false,
+      isAshes: false,
       hasFreezeRay: true,
       hasLaser: false
     };
     
     // Create keys object
-    const keys = { s: false };
+    const keys = { s: false, a: false, d: false };
     
     // Mock power-up indicator
     const player2PowerUpIndicator = document.createElement('div');
@@ -221,19 +258,52 @@ describe('Keyboard Controls', () => {
       return null;
     }
     
+    // Function to simulate movePaddles behavior
+    function movePaddles() {
+      // Player 2 keyboard control
+      if (!paddle2.isFrozen && !paddle2.isAshes) {
+        if (keys.a && paddle2.x > 0) {
+          paddle2.x -= 5;
+          paddle2.dx = -5;
+        } else if (keys.d && paddle2.x < 800 - paddle2.width) {
+          paddle2.x += 5;
+          paddle2.dx = 5;
+        } else {
+          paddle2.dx = 0;
+        }
+        
+        // Check for S key to activate power-ups
+        if (keys.s) {
+          return handlePowerUpActivation(paddle2, 's', player2PowerUpIndicator);
+        }
+      }
+      return null;
+    }
+    
     // Test S key with freeze ray
     keys.s = true;
     
-    const activatedPowerUp = handlePowerUpActivation(paddle2, 's', player2PowerUpIndicator);
+    // Call movePaddles to simulate game loop
+    const activatedPowerUp = movePaddles();
     
     // Assertions
     expect(activatedPowerUp).toBe('freezeRay');
     expect(paddle2.hasFreezeRay).toBe(false);
     expect(player2PowerUpIndicator.style.display).toBe('none');
     expect(keys.s).toBe(false); // Key press should be consumed
+    
+    // Test with laser
+    paddle2.hasLaser = true;
+    keys.s = true;
+    
+    const activatedLaser = handlePowerUpActivation(paddle2, 's', player2PowerUpIndicator);
+    
+    // Assertions
+    expect(activatedLaser).toBe('laser');
+    expect(paddle2.hasLaser).toBe(false);
   });
   
-  test('Frozen paddle should not move with keyboard input', () => {
+  test('Frozen paddle should not move with keyboard controls', () => {
     // Create game objects
     const paddle1 = {
       x: 350,
@@ -241,7 +311,7 @@ describe('Keyboard Controls', () => {
       width: 100,
       height: 10,
       dx: 0,
-      isFrozen: true, // Paddle is frozen
+      isFrozen: true,
       isAshes: false
     };
     

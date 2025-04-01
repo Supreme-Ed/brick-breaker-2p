@@ -237,6 +237,130 @@ describe('Game Controls Integration', () => {
     // Check if the URL was updated correctly
     expect(window.location.href).toBe('index.html');
   });
+
+  test('Space key should activate Player 1 power-ups in game loop', () => {
+    // Create mock functions for power-up activation
+    const shootFreezeRay = jest.fn();
+    const shootLaser = jest.fn();
+    const shootAction = jest.fn((player) => {
+      if (player === 1) {
+        if (paddle1.hasFreezeRay) {
+          shootFreezeRay(1);
+          paddle1.hasFreezeRay = false;
+          return 'freezeRay';
+        } else if (paddle1.hasLaser) {
+          shootLaser(1);
+          paddle1.hasLaser = false;
+          return 'laser';
+        }
+      }
+      return null;
+    });
+
+    // Create keys object
+    const keys = { Space: false, ArrowLeft: false, ArrowRight: false };
+    
+    // Give paddle1 a power-up
+    paddle1.hasFreezeRay = true;
+    
+    // Function to simulate movePaddles behavior
+    function movePaddles() {
+      // Player 1 keyboard control
+      if (!paddle1.isFrozen && !paddle1.isAshes) {
+        if (keys.ArrowLeft && paddle1.x > 0) {
+          paddle1.x -= 5;
+          paddle1.dx = -5;
+        } else if (keys.ArrowRight && paddle1.x < 800 - paddle1.width) {
+          paddle1.x += 5;
+          paddle1.dx = 5;
+        } else {
+          paddle1.dx = 0;
+        }
+        
+        // Check for Space key to activate power-ups
+        if (keys.Space) {
+          keys.Space = false; // Reset key state to prevent multiple activations
+          return shootAction(1);
+        }
+      }
+      return null;
+    }
+    
+    // Simulate pressing Space key
+    keys.Space = true;
+    
+    // Call movePaddles to simulate game loop
+    const result = movePaddles();
+    
+    // Assertions
+    expect(result).toBe('freezeRay');
+    expect(shootAction).toHaveBeenCalledWith(1);
+    expect(shootFreezeRay).toHaveBeenCalledWith(1);
+    expect(paddle1.hasFreezeRay).toBe(false);
+    expect(keys.Space).toBe(false); // Key press should be consumed
+  });
+
+  test('S key should activate Player 2 power-ups in game loop', () => {
+    // Create mock functions for power-up activation
+    const shootFreezeRay = jest.fn();
+    const shootLaser = jest.fn();
+    const shootAction = jest.fn((player) => {
+      if (player === 2) {
+        if (paddle2.hasFreezeRay) {
+          shootFreezeRay(2);
+          paddle2.hasFreezeRay = false;
+          return 'freezeRay';
+        } else if (paddle2.hasLaser) {
+          shootLaser(2);
+          paddle2.hasLaser = false;
+          return 'laser';
+        }
+      }
+      return null;
+    });
+
+    // Create keys object
+    const keys = { s: false, a: false, d: false };
+    
+    // Give paddle2 a power-up
+    paddle2.hasLaser = true;
+    
+    // Function to simulate movePaddles behavior
+    function movePaddles() {
+      // Player 2 keyboard control
+      if (!paddle2.isFrozen && !paddle2.isAshes) {
+        if (keys.a && paddle2.x > 0) {
+          paddle2.x -= 5;
+          paddle2.dx = -5;
+        } else if (keys.d && paddle2.x < 800 - paddle2.width) {
+          paddle2.x += 5;
+          paddle2.dx = 5;
+        } else {
+          paddle2.dx = 0;
+        }
+        
+        // Check for S key to activate power-ups
+        if (keys.s) {
+          keys.s = false; // Reset key state to prevent multiple activations
+          return shootAction(2);
+        }
+      }
+      return null;
+    }
+    
+    // Simulate pressing S key
+    keys.s = true;
+    
+    // Call movePaddles to simulate game loop
+    const result = movePaddles();
+    
+    // Assertions
+    expect(result).toBe('laser');
+    expect(shootAction).toHaveBeenCalledWith(2);
+    expect(shootLaser).toHaveBeenCalledWith(2);
+    expect(paddle2.hasLaser).toBe(false);
+    expect(keys.s).toBe(false); // Key press should be consumed
+  });
   
   test('Game UI buttons should be properly displayed', () => {
     // Get the game UI container
