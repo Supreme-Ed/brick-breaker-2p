@@ -39,7 +39,6 @@ Brick Breaker 2P is a web-based game that allows players to compete against each
 - Each player controls a paddle at opposite ends of the screen
 - Players must prevent balls from crossing their boundary
 - Players score points by breaking bricks and getting balls past the opponent
-- Game ends when a player reaches 10 points
 - When all bricks are cleared, a new pattern is generated
 
 ### 3.2 Scoring System
@@ -47,7 +46,9 @@ Brick Breaker 2P is a web-based game that allows players to compete against each
 - 5 points for lasering a brick
 - 10 points for getting a ball past opponent's boundary
 - 20 points bonus when all bricks are cleared
-- First player to reach 10 points wins the game
+- Currently, the game has no score limit or win condition based on points
+
+**Future Enhancement:** Implement a configurable win condition where players can set a target score (e.g., first to reach 10, 20, or 50 points) or a time limit for matches.
 
 ### 3.3 Ball Physics
 - Frame-independent movement using deltaTime for consistent experience across devices
