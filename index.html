@@ -39,6 +39,60 @@
             text-align: left;
             font-size: 14px;
         }
+        /* Fix for radio button styling */
+        .control-options {
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+        .control-option {
+            display: flex;
+            align-items: center;
+            margin: 0 10px;
+        }
+        .control-option input[type="radio"] {
+            margin-right: 5px;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid white;
+            border-radius: 50%;
+            outline: none;
+            position: relative;
+        }
+        .control-option input[type="radio"]:checked::after {
+            content: "";
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #4CAF50;
+        }
+        .control-option input[type="radio"]:not(:checked)::after {
+            content: "";
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: black;
+        }
+        .control-option label {
+            cursor: pointer;
+            -webkit-user-select: none;
+            user-select: none;
+            font-weight: bold;
+            margin-left: 3px;
+        }
+        /* Make selected label more obvious */
+        .control-option input[type="radio"]:checked + label {
+            color: #4CAF50;
+        }
     </style>
 </head>
 <body>
@@ -54,12 +108,16 @@
             <p>Hit purple bricks to get the wide paddle power-up!</p>
             <p>Hit red bricks to get the laser power-up that turns opponents to ashes!</p>
         </div>
-        <div style="margin-bottom: 15px;">
+        <div class="control-options">
             <label>Player 1 Control (Single Player):</label>
-            <input type="radio" id="controlKeyboard" name="p1Control" value="keyboard" checked>
-            <label for="controlKeyboard">Keyboard</label>
-            <input type="radio" id="controlMouse" name="p1Control" value="mouse">
-            <label for="controlMouse">Mouse</label>
+            <div class="control-option">
+                <input type="radio" id="controlKeyboard" name="p1Control" value="keyboard" checked>
+                <label for="controlKeyboard">Keyboard</label>
+            </div>
+            <div class="control-option">
+                <input type="radio" id="controlMouse" name="p1Control" value="mouse">
+                <label for="controlMouse">Mouse</label>
+            </div>
         </div>
         <button class="button" onclick="startGame(1)">Single Player</button>
         <button class="button" onclick="startGame(2)">Two Players</button>
@@ -76,6 +134,20 @@
             // Navigate to the game page, passing the mode and control method (if applicable)
             window.location.href = url;
         }
+        
+        // Ensure only one radio button is selected
+        document.addEventListener('DOMContentLoaded', function() {
+            const radioButtons = document.querySelectorAll('input[name="p1Control"]');
+            radioButtons.forEach(radio => {
+                radio.addEventListener('click', function() {
+                    // Uncheck all other radio buttons
+                    radioButtons.forEach(r => {
+                        if (r !== this) r.checked = false;
+                    });
+                    this.checked = true;
+                });
+            });
+        });
     </script>
 </body>
 </html>
