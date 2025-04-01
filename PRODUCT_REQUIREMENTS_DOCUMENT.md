@@ -43,8 +43,10 @@ Brick Breaker 2P is a web-based game that allows players to compete against each
 - When all bricks are cleared, a new pattern is generated
 
 ### 3.2 Scoring System
-- 1 point for breaking a brick
-- 2 points for getting a ball past opponent's boundary
+- 5 points for breaking a brick
+- 5 points for lasering a brick
+- 10 points for getting a ball past opponent's boundary
+- 20 points bonus when all bricks are cleared
 - First player to reach 10 points wins the game
 
 ### 3.3 Ball Physics
