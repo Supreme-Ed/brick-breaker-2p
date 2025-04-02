@@ -19,20 +19,10 @@ export class Ball {
     }
 
     update(deltaTime) {
-        // Debug NaN issue
-        if (!isFinite(this.x) || !isFinite(this.y) || !isFinite(this.dx) || !isFinite(this.dy) || !isFinite(deltaTime)) {
-            console.warn(`[Ball.update PRE] Non-finite value detected: x=${this.x}, y=${this.y}, dx=${this.dx}, dy=${this.dy}, dt=${deltaTime}`);
-        }
-
         // Move the ball - using deltaTime for frame-independent movement
         this.x += this.dx * deltaTime;
         this.y += this.dy * deltaTime;
 
-        // Debug NaN issue
-        if (!isFinite(this.x) || !isFinite(this.y)) {
-            console.error(`[Ball.update POST] NaN detected: x=${this.x}, y=${this.y}. Prev values: dx=${this.dx}, dy=${this.dy}, dt=${deltaTime}`);
-        }
-        
         // Check for wall collisions
         this.checkWallCollision();
     }

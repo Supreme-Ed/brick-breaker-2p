@@ -44,11 +44,6 @@ export class GameStateManager {
             return 0;
         }
         
-        // Log types for debugging NaN issue
-        if (typeof timestamp !== 'number' || typeof this.lastFrameTime !== 'number') {
-            console.warn(`[GameStateManager.update] Type mismatch detected: timestamp (${typeof timestamp}), lastFrameTime (${typeof this.lastFrameTime})`);
-        }
-        
         // Explicitly convert to numbers before calculation
         this.deltaTime = (Number(timestamp) - Number(this.lastFrameTime)) / 1000; // Convert to seconds
         this.lastFrameTime = timestamp;
