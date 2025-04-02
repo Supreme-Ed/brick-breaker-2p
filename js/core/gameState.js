@@ -5,13 +5,13 @@
 
 export class GameStateManager {
     constructor() {
-        this.state = 'menu'; // 'menu', 'playing', 'paused', 'gameOver'
+        this.state = 'menu'; 
         this.gameMode = 1; // 1 = single player, 2 = two players, 3 = AI vs AI
         this.controlMethod = 'keyboard'; // 'keyboard', 'mouse', 'touch'
         this.player1Name = 'Player 1';
         this.player2Name = 'Player 2';
         this.isDebugMode = false;
-        this.lastFrameTime = 0;
+        this.lastFrameTime = 0; 
         this.deltaTime = 0;
         this.fps = 0;
         this.frameCount = 0;
@@ -33,25 +33,26 @@ export class GameStateManager {
             this.player1Name = 'AI 1';
             this.player2Name = 'AI 2';
         }
-        
-        this.state = 'playing';
     }
     
     update(timestamp) {
-        // Calculate delta time and FPS
         if (this.lastFrameTime === 0) {
             this.lastFrameTime = timestamp;
-            return 0;
+        }
+
+        this.deltaTime = (timestamp - this.lastFrameTime) / 1000;
+        this.lastFrameTime = timestamp;
+
+        if (!isFinite(this.deltaTime) || this.deltaTime < 0) {
+            console.warn(`[GameStateManager.update] Invalid deltaTime calculated (${this.deltaTime}). Resetting to 0. timestamp=${timestamp}, lastFrameTime=${this.lastFrameTime}`);
+            this.deltaTime = 0; 
         }
         
-        // Explicitly convert to numbers before calculation
-        this.deltaTime = (Number(timestamp) - Number(this.lastFrameTime)) / 1000; // Convert to seconds
-        this.lastFrameTime = timestamp;
-        
-        // Cap delta time to prevent large jumps
-        if (this.deltaTime > 0.1) this.deltaTime = 0.1;
-        
-        // Calculate FPS
+        if (this.deltaTime > 0.1) { 
+            console.warn(`[GameStateManager.update] Capping large deltaTime (${this.deltaTime}) to 0.1.`);
+            this.deltaTime = 0.1;
+        }
+
         this.frameCount++;
         this.secondsCounter += this.deltaTime;
         if (this.secondsCounter >= 1) {
@@ -59,14 +60,8 @@ export class GameStateManager {
             this.frameCount = 0;
             this.secondsCounter = 0;
         }
-        
-        // Check if deltaTime became NaN before returning
-        if (!isFinite(this.deltaTime)) {
-            console.error(`[GameStateManager.update] Calculated deltaTime is NaN! timestamp=${timestamp}, lastFrameTime=${this.lastFrameTime}. Resetting deltaTime to 0.`);
-            this.deltaTime = 0; // Prevent NaN propagation
-        }
-        
-        return this.deltaTime;
+
+        return false;
     }
     
     handleEvent(event) {
@@ -97,18 +92,12 @@ export class GameStateManager {
         }
     }
     
-    togglePause() {
+    togglePause() { 
         if (this.state === 'playing') {
             this.state = 'paused';
         } else if (this.state === 'paused') {
             this.state = 'playing';
         }
-    }
-    
-    handleAllBricksCleared() {
-        // Award bonus points to both players
-        window.paddle1.score += 20;
-        window.paddle2.score += 20;
     }
     
     isPlaying() {
