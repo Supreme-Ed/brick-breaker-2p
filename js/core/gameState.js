@@ -71,7 +71,7 @@ export class GameStateManager {
                 break;
                 
             case 'allBricksCleared':
-                this.handleAllBricksCleared();
+                // Logic handled in Game.update based on physics event
                 break;
                 
             case 'score':

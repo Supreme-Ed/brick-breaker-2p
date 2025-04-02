@@ -181,6 +181,9 @@ class Game {
             if (event.type === 'brickBreak') {
                 createBrickParticles(event.brick, this.particles);
             } else if (event.type === 'allBricksCleared') {
+                // Award bonus points (from PRD)
+                this.paddle1.score += 20;
+                this.paddle2.score += 20;
                 this.bricks.nextPattern();
                 audioManager.playLevelComplete();
             }
