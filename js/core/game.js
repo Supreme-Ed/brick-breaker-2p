@@ -57,6 +57,7 @@ class Game {
         this.score1Element = document.getElementById('score1');
         this.score2Element = document.getElementById('score2');
         this.topBarElement = document.getElementById('top-bar'); // Get top bar
+        this.fullscreenBtn = document.getElementById('fullscreenBtn'); // Get fullscreen button
         
         // Bind methods
         this.update = this.update.bind(this);
@@ -69,7 +70,7 @@ class Game {
         this.shootFreezeRay = this.shootFreezeRay.bind(this);
         this.shootLaser = this.shootLaser.bind(this);
         this.togglePause = this.togglePause.bind(this); // Bind togglePause
-        this.toggleMute = this.toggleMute.bind(this); // Bind toggleMute
+        this.toggleFullScreen = this.toggleFullScreen.bind(this); // Bind toggleFullScreen
         
         // Initialize audio
         audioManager.init();
@@ -83,12 +84,11 @@ class Game {
             console.error('[Game Init] Pause button element (#pauseBtn) not found!'); // DEBUG
         }
         
-        // Get mute button element safely within init
-        this.muteBtn = document.getElementById('muteButton'); // Get mute button
-        if (this.muteBtn) {
-            this.muteBtn.addEventListener('click', this.toggleMute); // Bind context
+        // Get fullscreen button element safely within init
+        if (this.fullscreenBtn) {
+            this.fullscreenBtn.addEventListener('click', this.toggleFullScreen); // Bind context
         } else {
-            console.warn('[Game Init] Mute button element (#muteButton) not found.');
+            console.warn('[Game Init] Fullscreen button element (#fullscreenBtn) not found.');
         }
         
         // Start the game loop
@@ -605,12 +605,24 @@ class Game {
         }
     }
     
-    toggleMute() {
-        this.audioManager.toggleMute();
-        if (this.muteBtn) {
-            this.muteBtn.textContent = this.audioManager.isMuted ? 'Unmute' : 'Mute';
+    toggleFullScreen() {
+        const docEl = document.documentElement;
+        const requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
+        const cancelFullScreen = document.exitFullscreen || document.mozCancelFullScreen || document.webkitExitFullscreen || document.msExitFullscreen;
+
+        if (!document.fullscreenElement && !document.mozFullScreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+            // Not currently in fullscreen
+            if (requestFullScreen) {
+                requestFullScreen.call(docEl);
+                if (this.fullscreenBtn) this.fullscreenBtn.blur(); // Remove focus
+            }
+        } else {
+            // Currently in fullscreen
+            if (cancelFullScreen) {
+                cancelFullScreen.call(document);
+                if (this.fullscreenBtn) this.fullscreenBtn.blur(); // Remove focus
+            }
         }
-        console.log(`[AudioManager] Muted state: ${this.audioManager.isMuted}`);
     }
 
     draw() {
