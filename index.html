@@ -169,9 +169,9 @@
                 </div>
             </div>
         </div>
-        <button class="button" onclick="startGame(1)">Single Player</button>
-        <button class="button" onclick="startGame(2)">Two Players</button>
-        <button class="button" onclick="startGame(3)">AI vs. AI</button>
+        <button class="button" id="startSinglePlayer">Single Player</button>
+        <button class="button" id="startTwoPlayers">Two Players</button>
+        <button class="button" id="startAiVsAi">AI vs. AI</button>
 
         <button id="toggleControlsBtn" class="button">Controls Help</button>
 
@@ -204,59 +204,7 @@
         </div>
     </div>
 
-    <script>
-        function startGame(mode) {
-            let url = `game.html?mode=${mode}`;
-            if (mode === 1) {
-                const selectedControl = document.querySelector('input[name="p1Control"]:checked').value;
-                url += `&control=${selectedControl}`;
-            }
-            window.location.href = url;
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const radioButtons = document.querySelectorAll('input[name="p1Control"]');
-            let currentlyChecked = document.querySelector('input[name="p1Control"]:checked');
-
-            radioButtons.forEach(radio => {
-                radio.addEventListener('change', function() { 
-                    if (this.checked) {
-                        currentlyChecked = this;
-                    }
-                });
-
-                const label = document.querySelector(`label[for="${radio.id}"]`);
-                if (label) {
-                    label.addEventListener('click', () => {
-                        if (!radio.checked) {
-                            radio.checked = true;
-                            const event = new Event('change');
-                            radio.dispatchEvent(event);
-                        }
-                    });
-                }
-            });
-
-            const controlsDiv = document.querySelector('.controls');
-            const toggleBtn = document.getElementById('toggleControlsBtn');
-            const startScreenDiv = document.getElementById('startScreen');
-
-            if (toggleBtn && controlsDiv) {
-                toggleBtn.addEventListener('click', () => {
-                    const isVisible = controlsDiv.classList.contains('visible');
-                    if (isVisible) {
-                        controlsDiv.classList.remove('visible');
-                        toggleBtn.textContent = 'Controls Help';
-                        startScreenDiv.classList.remove('controls-expanded');
-                    } else {
-                        controlsDiv.classList.add('visible');
-                        toggleBtn.textContent = 'Hide Controls';
-                        startScreenDiv.classList.add('controls-expanded');
-                    }
-                });
-            }
-        });
-    </script>
-
+    <!-- Load the menu script as a module -->
+    <script type="module" src="/js/menu.js"></script>
 </body>
 </html>
