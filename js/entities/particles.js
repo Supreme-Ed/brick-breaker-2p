@@ -4,6 +4,16 @@
  */
 
 export class Particle {
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @param {string} color
+     * @param {number} velocityX
+     * @param {number} velocityY
+     * @param {number} size
+     * @param {number} [gravity=0.1]
+     * @param {number} [fadeRate=0.02]
+     */
     constructor(x, y, color, velocityX, velocityY, size, gravity = 0.1, fadeRate = 0.02) {
         this.x = x;
         this.y = y;
@@ -17,6 +27,9 @@ export class Particle {
         this.active = true;
     }
 
+    /**
+     * Updates the particle's position and alpha value
+     */
     update() {
         this.velocityY += this.gravity;
         this.x += this.velocityX;
@@ -28,6 +41,9 @@ export class Particle {
         }
     }
 
+    /**
+     * @param {CanvasRenderingContext2D} ctx
+     */
     draw(ctx) {
         ctx.save();
         ctx.globalAlpha = this.alpha;
@@ -39,6 +55,10 @@ export class Particle {
     }
 }
 
+/**
+ * @param {object} brick
+ * @param {Particle[]} particles
+ */
 export function createBrickParticles(brick, particles) {
     const particleCount = 20;
     for (let i = 0; i < particleCount; i++) {
@@ -49,6 +69,11 @@ export function createBrickParticles(brick, particles) {
     }
 }
 
+/**
+ * @param {object} object - The object turning to ashes (e.g., paddle)
+ * @param {number} count - Number of particles to create
+ * @param {Particle[]} particles - Array to add particles to
+ */
 export function createAshParticles(object, count, particles) {
     for (let i = 0; i < count; i++) {
         const x = object.x + Math.random() * object.width;

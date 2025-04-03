@@ -4,6 +4,10 @@
  */
 
 export class BrickManager {
+    /**
+     * @param {number} canvasWidth
+     * @param {number} canvasHeight
+     */
     constructor(canvasWidth, canvasHeight) {
         this.canvasWidth = canvasWidth;
         this.canvasHeight = canvasHeight;
@@ -29,6 +33,9 @@ export class BrickManager {
         this.initGrid();
     }
 
+    /**
+     * Initialize the brick grid
+     */
     initGrid() {
         // Initialize empty grid
         this.grid = [];
@@ -56,6 +63,10 @@ export class BrickManager {
         this.applyPattern(this.patterns[this.currentPattern]);
     }
 
+    /**
+     * Apply a pattern to the brick grid
+     * @param {string} pattern
+     */
     applyPattern(pattern) {
         // Reset all bricks first
         for (let c = 0; c < this.columns; c++) {
@@ -91,6 +102,9 @@ export class BrickManager {
         this.updateBrickPositions();
     }
 
+    /**
+     * Update the positions of all bricks in the grid
+     */
     updateBrickPositions() {
         for (let c = 0; c < this.columns; c++) {
             for (let r = 0; r < this.rows; r++) {
@@ -100,6 +114,9 @@ export class BrickManager {
         }
     }
 
+    /**
+     * Create a standard pattern of bricks
+     */
     createStandardPattern() {
         for (let c = 0; c < this.columns; c++) {
             for (let r = 0; r < this.rows; r++) {
@@ -109,6 +126,9 @@ export class BrickManager {
         }
     }
 
+    /**
+     * Create a checkerboard pattern of bricks
+     */
     createCheckerboardPattern() {
         for (let c = 0; c < this.columns; c++) {
             for (let r = 0; r < this.rows; r++) {
@@ -120,6 +140,9 @@ export class BrickManager {
         }
     }
 
+    /**
+     * Create a diamond pattern of bricks
+     */
     createDiamondPattern() {
         const centerC = Math.floor(this.columns / 2) - 0.5;
         const centerR = Math.floor(this.rows / 2) - 0.5;
@@ -137,6 +160,9 @@ export class BrickManager {
         }
     }
 
+    /**
+     * Create a random pattern of bricks
+     */
     createRandomPattern() {
         for (let c = 0; c < this.columns; c++) {
             for (let r = 0; r < this.rows; r++) {
@@ -148,6 +174,9 @@ export class BrickManager {
         }
     }
 
+    /**
+     * Create a zigzag pattern of bricks
+     */
     createZigzagPattern() {
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.columns; c++) {
@@ -159,6 +188,9 @@ export class BrickManager {
         }
     }
 
+    /**
+     * Add power-up bricks to the grid
+     */
     addPowerUpBricks() {
         // Add freeze ray power-up bricks (blue)
         for (let i = 0; i < 2; i++) {
@@ -197,6 +229,10 @@ export class BrickManager {
         }
     }
 
+    /**
+     * Count the number of active bricks in the grid
+     * @returns {number}
+     */
     countActiveBricks() {
         let count = 0;
         for (let c = 0; c < this.columns; c++) {
@@ -209,11 +245,18 @@ export class BrickManager {
         return count;
     }
 
+    /**
+     * Switch to the next pattern
+     */
     nextPattern() {
         this.currentPattern = (this.currentPattern + 1) % this.patterns.length;
         this.applyPattern(this.patterns[this.currentPattern]);
     }
 
+    /**
+     * Draw the brick grid on the canvas
+     * @param {CanvasRenderingContext2D} ctx
+     */
     draw(ctx) {
         for (let c = 0; c < this.columns; c++) {
             for (let r = 0; r < this.rows; r++) {
@@ -225,6 +268,11 @@ export class BrickManager {
         }
     }
 
+    /**
+     * Draw a single brick on the canvas
+     * @param {CanvasRenderingContext2D} ctx
+     * @param {object} brick // Internal brick representation
+     */
     drawBrick(ctx, brick) {
         // Get RGB values for color manipulation
         const rgb = this.getRGBfromColor(brick.color);
@@ -326,6 +374,11 @@ export class BrickManager {
         }
     }
 
+    /**
+     * Convert a color to RGB format
+     * @param {string} color
+     * @returns {string}
+     */
     getRGBfromColor(color) {
         // Handle hex colors
         if (color.startsWith('#')) {
@@ -339,6 +392,12 @@ export class BrickManager {
         return color;
     }
 
+    /**
+     * Lighten a color by a specified amount
+     * @param {string} rgb
+     * @param {number} amount
+     * @returns {string}
+     */
     lightenColor(rgb, amount) {
         const match = rgb.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
         if (!match) return rgb;
@@ -354,6 +413,12 @@ export class BrickManager {
         return `rgb(${r}, ${g}, ${b})`;
     }
 
+    /**
+     * Darken a color by a specified amount
+     * @param {string} rgb
+     * @param {number} amount
+     * @returns {string}
+     */
     darkenColor(rgb, amount) {
         const match = rgb.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
         if (!match) return rgb;
@@ -369,6 +434,11 @@ export class BrickManager {
         return `rgb(${r}, ${g}, ${b})`;
     }
 
+    /**
+     * Check for collision between a ball and the brick grid
+     * @param {Ball} ball
+     * @returns {{ hit: boolean, brick?: object, column?: number, row?: number, powerUp?: string | null }}
+     */
     checkCollision(ball) {
         for (let c = 0; c < this.columns; c++) {
             for (let r = 0; r < this.rows; r++) {
@@ -428,7 +498,12 @@ export class BrickManager {
     }
 }
 
-// Export a factory function to create the brick manager
+/**
+ * Export a factory function to create the brick manager
+ * @param {number} canvasWidth
+ * @param {number} canvasHeight
+ * @returns {BrickManager}
+ */
 export function createBrickManager(canvasWidth, canvasHeight) {
     return new BrickManager(canvasWidth, canvasHeight);
 }

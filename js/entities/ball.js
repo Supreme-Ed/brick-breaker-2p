@@ -4,6 +4,16 @@
  */
 
 export class Ball {
+    /**
+     * @param {number} x
+     * @param {number} y
+     * @param {number} radius
+     * @param {number} dx
+     * @param {number} dy
+     * @param {number} owner - 1 for player 1, 2 for player 2
+     * @param {number} canvasWidth
+     * @param {number} canvasHeight
+     */
     constructor(x, y, radius, dx, dy, owner, canvasWidth, canvasHeight) {
         this.x = x;
         this.y = y;
@@ -18,6 +28,9 @@ export class Ball {
         this.maxSpeed = 350;  // Adjusted for appropriate on-screen speed
     }
 
+    /**
+     * @param {number} deltaTime
+     */
     update(deltaTime) {
         // Move the ball - using deltaTime for frame-independent movement
         this.x += this.dx * deltaTime;
@@ -43,6 +56,11 @@ export class Ball {
         return { wall: null };
     }
     
+    /**
+     * @param {Paddle} paddle
+     * @param {boolean} isTopPaddle
+     * @returns {boolean}
+     */
     checkPaddleCollision(paddle, isTopPaddle) {
         // Skip if paddle is turned to ashes
         if (paddle.isAshes) return false;
@@ -98,6 +116,9 @@ export class Ball {
         return { boundary: null, scorer: null };
     }
     
+    /**
+     * @param {number} owner - 1 for player 1, 2 for player 2
+     */
     reset(owner) {
         // Reset ball position and direction
         if (owner === 1) {
@@ -118,6 +139,9 @@ export class Ball {
         this.lastHitBy = owner;
     }
     
+    /**
+     * @param {CanvasRenderingContext2D} ctx
+     */
     draw(ctx) {
         // Safeguard against non-finite coordinates causing crash
         if (!isFinite(this.x) || !isFinite(this.y) || !isFinite(this.radius)) {
@@ -163,7 +187,13 @@ export class Ball {
     }
 }
 
-// Factory function to create balls
+/**
+ * Factory function to create balls
+ * @param {number} owner
+ * @param {number} canvasWidth
+ * @param {number} canvasHeight
+ * @returns {Ball}
+ */
 export function createBall(owner, canvasWidth, canvasHeight) {
     const radius = 8;
     let x, y, dx, dy;

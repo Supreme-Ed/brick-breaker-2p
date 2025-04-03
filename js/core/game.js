@@ -112,7 +112,7 @@ class Game {
         this.paddle1.isWide = false;
         this.paddle1.hasLaser = false;
         this.paddle1.isAshes = false;
-        
+ 
         this.paddle2.x = (this.canvas.width - this.paddle2.width) / 2;
         this.paddle2.score = 0;
         this.paddle2.hasFreezeRay = false;
@@ -191,6 +191,28 @@ class Game {
             
             if (event.type === 'brickBreak') {
                 createBrickParticles(event.brick, this.particles);
+                
+                // --- Add Power-up Granting Logic ---
+                if (event.brick && event.brick.powerUpType && event.ball) {
+                    const paddle = event.ball.playerNum === 1 ? this.paddle1 : this.paddle2;
+                    if (paddle) {
+                        switch (event.brick.powerUpType) {
+                            case 'freeze':
+                                paddle.activateFreezeRay(); // Call activation function
+                                audioManager.playPowerUp();
+                                console.log(`Power-up: Freeze Ray granted to Player ${event.ball.playerNum}`);
+                                break;
+                            case 'laser':
+                                paddle.activateLaser(); // Call activation function
+                                audioManager.playPowerUp();
+                                console.log(`Power-up: Laser granted to Player ${event.ball.playerNum}`);
+                                break;
+                            // Add cases for other power-ups if needed
+                        }
+                    }
+                }
+                // --- End Power-up Granting Logic ---
+                
             } else if (event.type === 'allBricksCleared') {
                 // Award bonus points (from PRD)
                 this.paddle1.score += 20;
@@ -213,16 +235,20 @@ class Game {
         const gameMode = this.gameState.gameMode;
         if (gameMode === 1) { // Assuming mode 1 is Player vs AI
             if (keys.l) {
-                this.paddle1.hasLaser = true;
-                this.paddle1.hasFreezeRay = false; // Can only have one powerup
+                // --- Use activation function instead of direct assignment ---
+                this.paddle1.activateLaser(); 
+                // this.paddle1.hasLaser = true; // Original direct assignment
+                // this.paddle1.hasFreezeRay = false; // activateLaser should handle exclusivity if needed
                 console.log('CHEAT: Laser added to Player 1');
                 keys.l = false; // Consume the key press
                 audioManager.playPowerUp(); // Play feedback sound
             }
             // Restore original check for 'f' key
             if (keys.f) {
-                this.paddle1.hasFreezeRay = true;
-                this.paddle1.hasLaser = false; // Can only have one powerup
+                // --- Use activation function instead of direct assignment ---
+                this.paddle1.activateFreezeRay();
+                // this.paddle1.hasFreezeRay = true; // Original direct assignment
+                // this.paddle1.hasLaser = false; // activateFreezeRay should handle exclusivity if needed
                 console.log('CHEAT: Freeze Ray added to Player 1');
                 keys.f = false; // Consume the key press
                 audioManager.playPowerUp(); // Play feedback sound
@@ -329,6 +355,7 @@ class Game {
     shootLaser(player) {
         const paddle = player === 1 ? this.paddle1 : this.paddle2;
         
+        // Check if the paddle can use the laser (handles ammo check/consumption internally)
         if (paddle.useLaser()) {
             const x = paddle.x + paddle.width / 2;
             const y = player === 1 ? paddle.y : paddle.y + paddle.height;

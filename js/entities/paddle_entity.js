@@ -34,6 +34,14 @@ class Paddle {
         this.aiReactionDelay = 0.1; // Delay in seconds before AI reacts
     }
 
+    /**
+     * Updates the paddle state based on time delta, input keys, AI status, and ball positions.
+     * @param {number} deltaTime - The time elapsed since the last update.
+     * @param {Object} keys - An object containing the state of relevant keys.
+     * @param {boolean} [isAI=false] - Flag indicating if the paddle is controlled by AI.
+     * @param {Ball[]} [balls=[]] - An array of ball entities in the game.
+     * @param {Object} [gameManager=null] - The game manager instance.
+     */
     update(deltaTime, keys, isAI = false, balls = [], gameManager = null) { 
         // Handle power-up timers
         this.updatePowerUpTimers(deltaTime);
@@ -365,6 +373,8 @@ class Paddle {
     
     activateLaser() {
         this.hasLaser = true;
+        this.hasFreezeRay = false; // Ensure exclusivity
+        console.log('[Paddle] Laser activated.'); // Add log for confirmation
     }
     
     useFreezeRay() {
@@ -376,11 +386,13 @@ class Paddle {
     }
     
     useLaser() {
+        // Original logic: Check if laser is active and consume it immediately
         if (this.hasLaser) {
-            this.hasLaser = false;
+            this.hasLaser = false; // Consume the single shot
+            console.log('[Paddle] Laser used and consumed.');
             return true;
         }
-        return false;
+        return false; // No shot allowed (no laser)
     }
     
     freeze(duration = 3) {
