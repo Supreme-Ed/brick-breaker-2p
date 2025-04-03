@@ -57,6 +57,7 @@ This document tracks current and future development tasks for the Brick Breaker 
 - [ ] Address TypeScript "possibly null" warnings
 - [ ] Ensure consistent game performance across different devices
 - [x] Fix any touch control issues on mobile devices (coordinate scaling)
+- [x] Restore missing glow effect on game canvas
 
 ## Notes
 

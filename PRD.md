@@ -144,7 +144,7 @@ Brick Breaker 2P is a web-based game that allows players to compete against each
 - Visual indicators for power-up status
 - Smooth animations for all game elements
 - Responsive design that works across different screen sizes
-
+- Neon glow effect around game canvas for visual flair
 ### 7.2 Audio Elements
 - Sound effects for all gameplay actions:
   - Paddle hits
