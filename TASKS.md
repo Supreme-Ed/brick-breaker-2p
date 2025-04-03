@@ -27,7 +27,7 @@ This document tracks current and future development tasks for the Brick Breaker 
 ## Future Enhancements
 
 ### High Priority
-- [ ] Further enhance start screen aesthetics (beyond collapsible controls)
+- [ ] Implement basic high score list, will need python backend and will be stored in supabase
 - [ ] Rework sound system to support sound files for game sounds
 - [ ] Add screen size check and associated adjustments for different screen sizes and platforms
 - [ ] Add particle effects when bricks are broken
@@ -37,16 +37,15 @@ This document tracks current and future development tasks for the Brick Breaker 
 
 ### Medium Priority
 - [ ] Add support for Bluetooth controllers
-- [ ] Add local high score tracking
 - [ ] Implement additional power-ups
 - [ ] Create additional brick patterns
 - [ ] Add customization options for paddles and balls
 
 ### Low Priority
 - [ ] Add online multiplayer capability
-- [ ] Implement user accounts and global leaderboards
 - [ ] Create a level editor
 - [ ] Add achievements system
+- [ ] Further enhance start screen aesthetics (beyond collapsible controls)
 
 ## Bug Fixes
 
@@ -56,7 +55,7 @@ This document tracks current and future development tasks for the Brick Breaker 
 - [x] Fix erratic AI paddle movement due to missing deltaTime
 - [ ] Address TypeScript "possibly null" warnings
 - [ ] Ensure consistent game performance across different devices
-- [ ] Fix any touch control issues on mobile devices
+- [x] Fix any touch control issues on mobile devices (coordinate scaling)
 
 ## Notes
 

@@ -169,8 +169,12 @@ export class InputManager {
         for (let i = 0; i < e.changedTouches.length; i++) {
             const touch = e.changedTouches[i];
             const rect = this.canvas.getBoundingClientRect();
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
+            // Calculate scaling factors to map viewport coordinates to canvas coordinates
+            const scaleX = this.canvas.width / rect.width;
+            const scaleY = this.canvas.height / rect.height;
+            // Apply scaling to get coordinates within the canvas's internal resolution
+            const x = (touch.clientX - rect.left) * scaleX;
+            const y = (touch.clientY - rect.top) * scaleY;
             
             this.activeTouches[touch.identifier] = {
                 startX: x,
@@ -184,10 +188,12 @@ export class InputManager {
         // Directly update mousePosition based on the first changed touch
         const firstTouch = e.changedTouches[0];
         if (firstTouch) {
-            const rect = this.canvas.getBoundingClientRect();
+            const rect = this.canvas.getBoundingClientRect(); // Re-get rect in case of resize
+            const scaleX = this.canvas.width / rect.width;
+            const scaleY = this.canvas.height / rect.height;
             this.mousePosition = {
-                x: firstTouch.clientX - rect.left,
-                y: firstTouch.clientY - rect.top
+                x: (firstTouch.clientX - rect.left) * scaleX,
+                y: (firstTouch.clientY - rect.top) * scaleY
             };
         }
     }
@@ -200,8 +206,12 @@ export class InputManager {
             const touch = e.changedTouches[i];
             if (this.activeTouches[touch.identifier]) {
                 const rect = this.canvas.getBoundingClientRect();
-                this.activeTouches[touch.identifier].currentX = touch.clientX - rect.left;
-                this.activeTouches[touch.identifier].currentY = touch.clientY - rect.top;
+                // Calculate scaling factors
+                const scaleX = this.canvas.width / rect.width;
+                const scaleY = this.canvas.height / rect.height;
+                // Apply scaling
+                this.activeTouches[touch.identifier].currentX = (touch.clientX - rect.left) * scaleX;
+                this.activeTouches[touch.identifier].currentY = (touch.clientY - rect.top) * scaleY;
             }
         }
         
