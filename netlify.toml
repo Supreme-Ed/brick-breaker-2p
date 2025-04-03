@@ -1,0 +1,15 @@
+[build]
+  publish = "/"
+  command = ""
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+  conditions = {Role = ["admin"]}
+
+[[redirects]]
+  from = "/game.html*"
+  to = "/game.html"
+  status = 200
