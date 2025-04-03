@@ -5,6 +5,7 @@
   "main": "index.html",
   "scripts": {
     "start": "vite",
+    "build": "vite build",
     "test": "echo \"No test specified\" && exit 0",
     "test:unit": "jest --config=tests/unit/jest.config.js",
     "test:e2e:playwright": "scripts\\run-playwright-and-open-report.bat",
