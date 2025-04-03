@@ -22,29 +22,88 @@ export class InputManager {
         // Initialize mouse position to center to avoid initial jump left
         this.mousePosition = { x: canvas.width / 2, y: canvas.height / 2 }; 
         this.isMouseDown = false;
+        this.justClicked = false; // Flag for detecting new clicks
         this.tapPosition = null; // Position of the last detected tap
         this.justTapped = false; // Flag for reacting to a tap event
+        this.clickPending = false; // New flag to track if a click needs processing
+        
+        // New flags for keyboard power-up activation
+        this.spaceKeyPending = false;
+        this.sKeyPending = false;
+        
+        // Track the last time power-ups were activated to prevent too frequent activation
+        this.lastSpaceActivation = 0;
+        this.lastSActivation = 0;
+        this.activationCooldown = 300; // Reduced cooldown for more responsive feel
+        
+        // Bound event handlers for cleanup
+        this._boundKeyDown = null;
+        this._boundKeyUp = null;
+        this._boundMouseMove = null;
+        this._boundMouseDown = null;
+        this._boundMouseUp = null;
         
         this.setupEventListeners();
+        
+        // Check inputs periodically to ensure we don't miss any
+        this.inputCheckInterval = setInterval(() => this.checkInputState(), 100);
     }
     
     setupEventListeners() {
-        // Keyboard events
-        document.addEventListener('keydown', this.handleKeyDown.bind(this));
-        document.addEventListener('keyup', this.handleKeyUp.bind(this));
+        // Remove any existing event listeners to prevent duplicates
+        this.removeEventListeners();
+        
+        // Store bound event handlers so we can remove them later if needed
+        this._boundKeyDown = this.handleKeyDown.bind(this);
+        this._boundKeyUp = this.handleKeyUp.bind(this);
+        this._boundMouseMove = this.handleMouseMove.bind(this);
+        this._boundMouseDown = this.handleMouseDown.bind(this);
+        this._boundMouseUp = this.handleMouseUp.bind(this);
+        
+        // Keyboard events - add to window to ensure they're captured regardless of focus
+        window.addEventListener('keydown', this._boundKeyDown);
+        window.addEventListener('keyup', this._boundKeyUp);
+        
+        // Also add to document for broader coverage
+        document.addEventListener('keydown', this._boundKeyDown);
+        document.addEventListener('keyup', this._boundKeyUp);
         
         // Mouse events
-        this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
-        this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
-        this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
+        this.canvas.addEventListener('mousemove', this._boundMouseMove);
+        this.canvas.addEventListener('mousedown', this._boundMouseDown);
+        this.canvas.addEventListener('mouseup', this._boundMouseUp);
         
         // Touch events (if supported)
         if (this.isTouchDevice) {
             this.setupTouchControls();
         }
+        
+        console.log("[Input] Event listeners set up");
     }
     
     handleKeyDown(e) {
+        // Log all key events to debug spacebar issues
+        console.log(`[Input] Key down: '${e.key}', keyCode: ${e.keyCode}, code: ${e.code}`);
+        
+        // More robust space key detection - check all possible representations
+        if (e.key === ' ' || e.key === 'Space' || e.code === 'Space' || e.keyCode === 32) {
+            this.keys.Space = true;
+            this.spaceKeyPending = true; // New flag to track space key press
+            console.log("[Input] Space key pressed, pending activation");
+            e.preventDefault();
+            return; // Early return after handling space
+        }
+        
+        // More robust S key detection
+        if (e.key === 's' || e.key === 'S' || e.code === 'KeyS' || e.keyCode === 83) {
+            this.keys.s = true;
+            this.sKeyPending = true; // New flag to track s key press
+            console.log("[Input] 's' key pressed, pending activation");
+            e.preventDefault();
+            return; // Early return after handling s
+        }
+        
+        // For all other keys that we track
         if (e.key in this.keys) {
             this.keys[e.key] = true;
             e.preventDefault();
@@ -68,13 +127,17 @@ export class InputManager {
     
     handleMouseDown(e) {
         this.isMouseDown = true;
-        console.log("[Input DEBUG] MouseDown event fired."); // Log event
+        this.justClicked = true;
+        this.clickPending = true; // Set pending flag for next frame
+        
         // Store the click position for potential action
         const rect = this.canvas.getBoundingClientRect();
-        this.mousePosition = {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
-        };
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        
+        this.mousePosition = { x, y };
+        
+        console.log("[Input DEBUG] MouseDown event fired at x:", x, "y:", y, "clickPending:", this.clickPending);
     }
     
     handleMouseUp() {
@@ -184,7 +247,13 @@ export class InputManager {
     }
     
     isMousePressed() {
-        return this.isMouseDown;
+        // Return true once per click to ensure each click is only processed once
+        if (this.clickPending) {
+            this.clickPending = false;
+            console.log("[Input] Click detected and consumed");
+            return true;
+        }
+        return false;
     }
     
     getTapPosition() {
@@ -203,12 +272,58 @@ export class InputManager {
         return tapped;
     }
     
-    // Check if specific actions are triggered
+    // Check if space key was pressed for player 1 power-up activation
+    isSpaceKeyPressed() {
+        const currentTime = performance.now();
+        
+        // First, check for actual pending activation from keydown event
+        if (this.spaceKeyPending && currentTime - this.lastSpaceActivation > this.activationCooldown) {
+            this.spaceKeyPending = false;
+            this.lastSpaceActivation = currentTime;
+            console.log("[Input] Space key activation detected and consumed");
+            return true;
+        }
+        
+        // Fallback: Also check the raw key state in case the event handler missed it
+        if (this.keys.Space && currentTime - this.lastSpaceActivation > this.activationCooldown) {
+            this.keys.Space = false; // Reset the state
+            this.lastSpaceActivation = currentTime;
+            console.log("[Input] Space key activation detected from raw state");
+            return true;
+        }
+        
+        return false;
+    }
+    
+    // Check if S key was pressed for player 2 power-up activation
+    isSKeyPressed() {
+        const currentTime = performance.now();
+        
+        // First, check for actual pending activation from keydown event
+        if (this.sKeyPending && currentTime - this.lastSActivation > this.activationCooldown) {
+            this.sKeyPending = false;
+            this.lastSActivation = currentTime;
+            console.log("[Input] S key activation detected and consumed");
+            return true;
+        }
+        
+        // Fallback: Also check the raw key state in case the event handler missed it
+        if (this.keys.s && currentTime - this.lastSActivation > this.activationCooldown) {
+            this.keys.s = false; // Reset the state
+            this.lastSActivation = currentTime;
+            console.log("[Input] S key activation detected from raw state");
+            return true;
+        }
+        
+        return false;
+    }
+    
+    // For backward compatibility, though this method is no longer used
     isShootActionTriggered(playerNum) {
         if (playerNum === 1) {
-            return this.keys.Space || (this.isMouseDown && this.mousePosition.y > this.canvas.height / 2);
+            return this.isSpaceKeyPressed() || (this.isMouseDown && this.mousePosition.y > this.canvas.height / 2);
         } else {
-            return this.keys.s;
+            return this.isSKeyPressed();
         }
     }
     
@@ -219,11 +334,39 @@ export class InputManager {
     }
     
     // Reset all input states
+    removeEventListeners() {
+        // Only remove listeners if they exist
+        if (this._boundKeyDown) {
+            window.removeEventListener('keydown', this._boundKeyDown);
+            window.removeEventListener('keyup', this._boundKeyUp);
+            document.removeEventListener('keydown', this._boundKeyDown);
+            document.removeEventListener('keyup', this._boundKeyUp);
+            this.canvas.removeEventListener('mousemove', this._boundMouseMove);
+            this.canvas.removeEventListener('mousedown', this._boundMouseDown);
+            this.canvas.removeEventListener('mouseup', this._boundMouseUp);
+            
+            console.log("[Input] Event listeners removed");
+        }
+    }
+    
+    // Periodic check of input state to ensure we don't miss any keys
+    checkInputState() {
+        // Force a check of UI state and game state alignment
+        if (window.game) {
+            // Request that the game check its power-up state for consistency
+            window.game.checkPowerUpActivation();
+        }
+    }
+    
     reset() {
         for (const key in this.keys) {
             this.keys[key] = false;
         }
         this.isMouseDown = false;
+        this.justClicked = false;
+        this.clickPending = false; // Reset pending click state
+        this.spaceKeyPending = false;
+        this.sKeyPending = false;
         this.tapPosition = null;
         this.justTapped = false;
         this.activeTouches = {};

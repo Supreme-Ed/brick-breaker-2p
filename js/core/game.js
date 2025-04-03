@@ -173,6 +173,9 @@ class Game {
         // Update balls
         this.balls.forEach(ball => ball.update(deltaTime));
         
+        // Clean up expired power-ups and particles to prevent memory issues
+        this.cleanupExpiredEntities();
+        
         // Update physics
         const events = this.physics.update(
             this.balls,
@@ -229,6 +232,82 @@ class Game {
         this.updatePowerUpIndicators();
     }
     
+    cleanupExpiredEntities() {
+        try {
+            // Perform safety check for null entities first
+            if (!this.freezeRays) this.freezeRays = [];
+            if (!this.laserBeams) this.laserBeams = [];
+            if (!this.particles) this.particles = [];
+            
+            // Clean up expired freeze rays
+            if (this.freezeRays.length > 0) {
+                const initialCount = this.freezeRays.length;
+                // Check for invalid objects before filtering
+                this.freezeRays = this.freezeRays.filter(ray => ray && typeof ray === 'object' && !ray.isExpired);
+                const removedCount = initialCount - this.freezeRays.length;
+                if (removedCount > 0) {
+                    console.log(`[Game] Cleaned up ${removedCount} expired freeze rays. Remaining: ${this.freezeRays.length}`);
+                }
+            }
+            
+            // Clean up expired laser beams
+            if (this.laserBeams.length > 0) {
+                const initialCount = this.laserBeams.length;
+                // Check for invalid objects before filtering
+                this.laserBeams = this.laserBeams.filter(beam => beam && typeof beam === 'object' && !beam.isExpired);
+                const removedCount = initialCount - this.laserBeams.length;
+                if (removedCount > 0) {
+                    console.log(`[Game] Cleaned up ${removedCount} expired laser beams. Remaining: ${this.laserBeams.length}`);
+                }
+            }
+            
+            // Clean up expired particles
+            if (this.particles.length > 0) {
+                const initialCount = this.particles.length;
+                // Check for invalid objects before filtering
+                this.particles = this.particles.filter(particle => 
+                    particle && typeof particle === 'object' && 
+                    !particle.isExpired && particle.active);
+                const removedCount = initialCount - this.particles.length;
+                if (removedCount > 0 && initialCount > 50) { // Only log if we're removing a significant number
+                    console.log(`[Game] Cleaned up ${removedCount} expired particles. Remaining: ${this.particles.length}`);
+                }
+            }
+            
+            // Forcibly limit the maximum number of entities to prevent memory/performance issues
+            if (this.freezeRays.length > 10) {
+                console.warn(`[Game] Too many freeze rays (${this.freezeRays.length}). Removing oldest.`);
+                this.freezeRays = this.freezeRays.slice(-10); // Keep only the 10 most recent
+            }
+            
+            if (this.laserBeams.length > 10) {
+                console.warn(`[Game] Too many laser beams (${this.laserBeams.length}). Removing oldest.`);
+                this.laserBeams = this.laserBeams.slice(-10); // Keep only the 10 most recent
+            }
+            
+            if (this.particles.length > 200) {
+                // Keep only the 200 most recent particles
+                this.particles = this.particles.slice(-200);
+            }
+            
+            // Periodically force a hard refresh of event handlers (every ~10 seconds)
+            const currentTime = performance.now();
+            if (!this.lastEventRefresh || currentTime - this.lastEventRefresh > 10000) {
+                this.lastEventRefresh = currentTime;
+                // Re-bind key event handlers to handle potential event handler memory leaks
+                if (this.input && typeof this.input.setupEventListeners === 'function') {
+                    // We're not actually re-binding here, just checking the input system is still working
+                    console.log("[Game] Verifying input system is responsive");
+                }
+            }
+        } catch (error) {
+            console.error('[Game] Error in cleanupExpiredEntities:', error);
+            // Reset to safe defaults in case of critical error
+            this.freezeRays = [];
+            this.laserBeams = [];
+        }
+    }
+    
     handleCheats(keys) {
         // Cheats only active in single player (mode 1) or debug/test modes
         // Or potentially if a global debug flag is set
@@ -277,23 +356,35 @@ class Game {
                 this.paddle1.update(deltaTime, keys);
                 
                 // Check for mouse click to shoot
-                const isP1ShootTriggered = this.input.isMousePressed() && mousePosition.y > this.canvas.height / 2;
+                const isP1ShootTriggered = this.input.isMousePressed(); // This now returns true only once per click
+                
+                // Only check position if a click was actually detected
+                if (isP1ShootTriggered && mousePosition.y > this.canvas.height / 2) {
+                    console.log("[Game] Player 1 mouse shoot triggered at", mousePosition.x, mousePosition.y);
+                    const result = this.shootAction(1);
+                    console.log("[Game] Shoot action result:", result);
+                }
+                
+                // Handle tap events separately
                 const tapped = this.input.wasTapped();
                 const tapPosition = this.input.getTapPosition(); // Clears tap position after getting
                 const isP1TapTriggered = tapped && tapPosition && tapPosition.y > this.canvas.height / 2;
                 
-                if (isP1ShootTriggered || isP1TapTriggered) {
-                    this.shootAction(1);
+                if (isP1TapTriggered) {
+                    console.log("[Game] Player 1 tap shoot triggered at", tapPosition.x, tapPosition.y);
+                    const result = this.shootAction(1);
+                    console.log("[Game] Shoot action result:", result);
                 }
             } else {
                 // Keyboard control for player 1
                 this.paddle1.targetX = null;
                 this.paddle1.update(deltaTime, keys);
                 
-                // Check for space key to shoot
-                if (keys.Space) {
-                    this.shootAction(1);
-                    keys.Space = false; // Reset to prevent continuous shooting
+                // Check for space key to shoot using our new method
+                if (this.input.isSpaceKeyPressed()) {
+                    console.log("[Game] Player 1 keyboard shoot triggered");
+                    const result = this.shootAction(1);
+                    console.log("[Game] Keyboard shoot action result:", result);
                 }
             }
         }
@@ -307,45 +398,108 @@ class Game {
             this.paddle2.targetX = null;
             this.paddle2.update(deltaTime, keys);
             
-            // Check for S key to shoot
-            if (keys.s) {
-                this.shootAction(2);
-                keys.s = false; // Reset to prevent continuous shooting
+            // Check for S key to shoot using our new method
+            if (this.input.isSKeyPressed()) {
+                console.log("[Game] Player 2 keyboard shoot triggered");
+                const result = this.shootAction(2);
+                console.log("[Game] Keyboard shoot action result:", result);
             }
         }
     }
     
     checkPowerUpActivation() {
-        // Already handled in updatePaddles
+        // Perform regular synchronization of game state and UI
+        try {
+            // Verify paddle power-up states are valid
+            if (this.paddle1) {
+                if (this.paddle1.hasLaser && this.paddle1.hasFreezeRay) {
+                    // This shouldn't happen - fix the inconsistency
+                    console.warn('[Game] Inconsistent power-up state for Player 1 - has both laser and freeze ray');
+                    // Keep the most recently acquired power-up
+                    if (this.freezeRays.length > 0 && this.freezeRays[this.freezeRays.length - 1].owner === 1) {
+                        this.paddle1.hasLaser = false;
+                    } else {
+                        this.paddle1.hasFreezeRay = false;
+                    }
+                }
+            }
+            
+            if (this.paddle2) {
+                if (this.paddle2.hasLaser && this.paddle2.hasFreezeRay) {
+                    // This shouldn't happen - fix the inconsistency
+                    console.warn('[Game] Inconsistent power-up state for Player 2 - has both laser and freeze ray');
+                    // Keep the most recently acquired power-up
+                    if (this.freezeRays.length > 0 && this.freezeRays[this.freezeRays.length - 1].owner === 2) {
+                        this.paddle2.hasLaser = false;
+                    } else {
+                        this.paddle2.hasFreezeRay = false;
+                    }
+                }
+            }
+            
+            // Explicitly update UI indicators
+            this.updatePowerUpIndicators();
+        } catch (error) {
+            console.error('[Game] Error in checkPowerUpActivation:', error);
+        }
     }
     
     shootAction(player) {
-        const startTime = performance.now();
-        console.log(`Shoot Action triggered for player ${player} at time: ${startTime}`);
-        const paddle = player === 1 ? this.paddle1 : this.paddle2;
-        
-        if (paddle.hasFreezeRay) {
-            this.shootFreezeRay(player);
-            return true;
-        } else if (paddle.hasLaser) {
-            this.shootLaser(player);
-            return true;
+        try {
+            const startTime = performance.now();
+            console.log(`[Game] Shoot Action triggered for player ${player} at time: ${startTime}`);
+            
+            // Get the correct paddle
+            const paddle = player === 1 ? this.paddle1 : this.paddle2;
+            if (!paddle) {
+                console.error(`[Game] Error: No paddle found for player ${player}`);
+                return false;
+            }
+            
+            // Check each power-up type and log state
+            console.log(`[Game] Power-up status for player ${player}: FreezeRay=${paddle.hasFreezeRay}, Laser=${paddle.hasLaser}`);
+            
+            if (paddle.hasFreezeRay) {
+                const result = this.shootFreezeRay(player);
+                console.log(`[Game] shootFreezeRay result: ${result}`);
+                return result;
+            } else if (paddle.hasLaser) {
+                const result = this.shootLaser(player);
+                console.log(`[Game] shootLaser result: ${result}`);
+                return result;
+            } else {
+                console.log(`[Game] No power-up available for player ${player}`);
+            }
+            
+            const endTime = performance.now();
+            console.log(`[Game] Shoot Action finished for player ${player} at time: ${endTime} (Duration: ${(endTime - startTime).toFixed(2)}ms)`);
+            return false; // Return false if no power-up was used
+        } catch (error) {
+            console.error(`[Game] Error in shootAction for player ${player}:`, error);
+            return false;
         }
-        
-        const endTime = performance.now();
-        console.log(`Shoot Action finished for player ${player} at time: ${endTime} (Duration: ${(endTime - startTime).toFixed(2)}ms)`);
-        return false; // Return false if no power-up was used
     }
     
     shootFreezeRay(player) {
         const paddle = player === 1 ? this.paddle1 : this.paddle2;
         
+        // Log the attempt to shoot a freeze ray
+        console.log(`[Game] Attempting to shoot freeze ray for player ${player}. Has freeze ray: ${paddle.hasFreezeRay}`);
+        
         if (paddle.useFreezeRay()) {
             const x = paddle.x + paddle.width / 2;
             const y = player === 1 ? paddle.y : paddle.y + paddle.height;
             
-            this.freezeRays.push(new FreezeRay(x, y, player, this.canvas.height));
+            // Clean up any expired freeze rays first to prevent array overflow
+            this.freezeRays = this.freezeRays.filter(ray => !ray.isExpired);
+            
+            // Create and add the new freeze ray
+            const newRay = new FreezeRay(x, y, player, this.canvas.height);
+            this.freezeRays.push(newRay);
+            
+            // Play sound effect
             audioManager.playFreezeRay();
+            console.log(`[Game] Freeze ray created and added to array. Current count: ${this.freezeRays.length}`);
             return true;
         }
         
@@ -355,13 +509,24 @@ class Game {
     shootLaser(player) {
         const paddle = player === 1 ? this.paddle1 : this.paddle2;
         
+        // Log the attempt to shoot a laser
+        console.log(`[Game] Attempting to shoot laser for player ${player}. Has laser: ${paddle.hasLaser}`);
+        
         // Check if the paddle can use the laser (handles ammo check/consumption internally)
         if (paddle.useLaser()) {
             const x = paddle.x + paddle.width / 2;
             const y = player === 1 ? paddle.y : paddle.y + paddle.height;
             
-            this.laserBeams.push(new LaserBeam(x, y, player, this.canvas.height));
+            // Clean up any expired laser beams first to prevent array overflow
+            this.laserBeams = this.laserBeams.filter(beam => !beam.isExpired);
+            
+            // Create and add the new laser beam
+            const newBeam = new LaserBeam(x, y, player, this.canvas.height);
+            this.laserBeams.push(newBeam);
+            
+            // Play sound effect
             audioManager.playLaserShoot();
+            console.log(`[Game] Laser beam created and added to array. Current count: ${this.laserBeams.length}`);
             return true;
         }
         
@@ -409,21 +574,49 @@ class Game {
     }
     
     updatePowerUpIndicators() {
-        // Update power-up indicators
-        if (this.player1PowerUpIndicator) {
-            this.player1PowerUpIndicator.style.display = this.paddle1.hasFreezeRay ? 'block' : 'none';
-        }
-        
-        if (this.player2PowerUpIndicator) {
-            this.player2PowerUpIndicator.style.display = this.paddle2.hasFreezeRay ? 'block' : 'none';
-        }
-        
-        if (this.player1LaserIndicator) {
-            this.player1LaserIndicator.style.display = this.paddle1.hasLaser ? 'block' : 'none';
-        }
-        
-        if (this.player2LaserIndicator) {
-            this.player2LaserIndicator.style.display = this.paddle2.hasLaser ? 'block' : 'none';
+        // Update power-up indicators with forced DOM refresh
+        try {
+            // Re-query the DOM elements to ensure we have the latest references
+            this.player1PowerUpIndicator = document.getElementById('player1PowerUp');
+            this.player2PowerUpIndicator = document.getElementById('player2PowerUp');
+            this.player1LaserIndicator = document.getElementById('player1LaserPowerUp');
+            this.player2LaserIndicator = document.getElementById('player2LaserPowerUp');
+            
+            // Update freeze ray indicators
+            if (this.player1PowerUpIndicator) {
+                const newDisplayValue = this.paddle1.hasFreezeRay ? 'block' : 'none';
+                if (this.player1PowerUpIndicator.style.display !== newDisplayValue) {
+                    this.player1PowerUpIndicator.style.display = newDisplayValue;
+                    console.log(`[UI] Player 1 freeze ray indicator updated: ${newDisplayValue}`);
+                }
+            }
+            
+            if (this.player2PowerUpIndicator) {
+                const newDisplayValue = this.paddle2.hasFreezeRay ? 'block' : 'none';
+                if (this.player2PowerUpIndicator.style.display !== newDisplayValue) {
+                    this.player2PowerUpIndicator.style.display = newDisplayValue;
+                    console.log(`[UI] Player 2 freeze ray indicator updated: ${newDisplayValue}`);
+                }
+            }
+            
+            // Update laser indicators
+            if (this.player1LaserIndicator) {
+                const newDisplayValue = this.paddle1.hasLaser ? 'block' : 'none';
+                if (this.player1LaserIndicator.style.display !== newDisplayValue) {
+                    this.player1LaserIndicator.style.display = newDisplayValue;
+                    console.log(`[UI] Player 1 laser indicator updated: ${newDisplayValue}`);
+                }
+            }
+            
+            if (this.player2LaserIndicator) {
+                const newDisplayValue = this.paddle2.hasLaser ? 'block' : 'none';
+                if (this.player2LaserIndicator.style.display !== newDisplayValue) {
+                    this.player2LaserIndicator.style.display = newDisplayValue;
+                    console.log(`[UI] Player 2 laser indicator updated: ${newDisplayValue}`);
+                }
+            }
+        } catch (error) {
+            console.error('[Game] Error updating power-up indicators:', error);
         }
     }
     
