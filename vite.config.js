@@ -9,5 +9,13 @@ export default defineConfig({
         game: resolve(__dirname, 'game.html'),
       },
     },
+    // Explicitly configure Terser to remove console logs in production
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true, // Remove console.* calls
+        drop_debugger: true, // Remove debugger statements
+      },
+    },
   },
 });

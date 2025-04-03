@@ -8,7 +8,10 @@ import { game } from './core/game.js';
 
 // Debug helper
 window.debug = function(message) {
-    console.log(`[DEBUG] ${message}`);
+    // Only log if not in production build
+    if (!import.meta.env.PROD) {
+        console.log(`[DEBUG] ${message}`);
+    }
 };
 
 // Expose game globally for tests/debugging
