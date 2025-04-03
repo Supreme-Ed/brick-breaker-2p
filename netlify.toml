@@ -1,11 +1,8 @@
-# No build needed, just static files
-
+# Simple redirects for Netlify
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-  force = false
-  conditions = {Role = ["admin"]}
 
 [[redirects]]
   from = "/game.html*"
