@@ -62,6 +62,7 @@
     width: 100%;    /* Make canvas fill its container width */
     height: auto;   /* Maintain aspect ratio based on width */
     background-color: #000; /* Ensure background shows if aspect ratio mismatches slightly */
+    box-shadow: 0 0 25px var(--glow-color); /* Add glow effect */
 }
 
 /* Overlay screen styles (Game Over, Pause) */
