@@ -76,13 +76,13 @@ Brick Breaker 2P is a web-based game that allows players to compete against each
 ### 4.2 Mouse Controls
 - Available for Player 1 in single-player mode
 - Move mouse horizontally to control paddle position
-- Click to activate power-ups
+- Mouse button click to activate power-ups
 - Natural and intuitive control method for new players
 
 ### 4.3 Touch Controls
-- Support for mobile and tablet devices
+- Available for Player 1 in single-player mode (automatically enabled on touch devices)
 - Tap and drag to move paddles
-- Tap paddle to activate power-ups
+- Tap the lower half of the screen to activate power-ups (distinct tap, not touch-and-hold)
 - Responsive design adapts to different screen sizes
 
 ## 5. Power-Up System
@@ -199,11 +199,22 @@ Brick Breaker 2P is a web-based game that allows players to compete against each
   - Input handling
   - Physics calculations
   - Audio management
-- Comprehensive test coverage (unit and e2e tests)
+- Use of modern JavaScript features (ES Modules, classes)
+- Version control with Git
+- Development environment using Vite for fast builds and hot module replacement
 
-## 10. Future Enhancements
+## 10. Deployment
+- Target Platform: Netlify
+- Deployment Method: Continuous deployment via GitHub integration
+  - Connect Netlify account to GitHub repository (`Supreme-Ed/brick-breaker-2p`)
+  - Configure Netlify to build and deploy from the `main` or `refactor-modular` branch (as applicable)
+  - Build command: (Likely blank or `vite build` if needed)
+  - Publish directory: (Likely `/` or `dist` if build command is used)
+- Testing: Ensure deployed version functions correctly across supported browsers and devices.
 
-### 10.1 Planned Features
+## 11. Future Enhancements
+
+### 11.1 Planned Features
 - Online multiplayer support
 - Additional power-ups and game mechanics
 - Customizable paddle and ball appearance
@@ -211,29 +222,12 @@ Brick Breaker 2P is a web-based game that allows players to compete against each
 - Achievement system
 - Leaderboards for high scores
 
-### 10.2 Potential Expansions
+### 11.2 Potential Expansions
 - Mobile app versions (iOS, Android)
 - Additional game modes (time attack, survival)
 - Level editor for custom brick patterns
 - Integration with social platforms for sharing
 - Seasonal themed content
-
-## 11. Testing and Quality Assurance
-
-### 11.1 Testing Approach
-- Comprehensive unit tests for core game logic
-- End-to-end tests for game functionality
-- Performance testing across different devices
-- User acceptance testing with target audience
-
-### 11.2 Test Coverage
-- Game state management
-- Collision detection
-- Power-up functionality
-- Control schemes
-- AI behavior
-- UI interactions
-- Browser compatibility
 
 ## 12. Implementation Timeline
 
