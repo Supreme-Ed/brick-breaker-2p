@@ -20,6 +20,8 @@ This document tracks current and future development tasks for the Brick Breaker 
 - [x] Fix power-up activation issues with keyboard controls
 - [x] Improve power-up system reliability during extended gameplay
 - [x] Fix Netlify deployment 404 errors with proper path configuration
+- [x] Set Mouse as default control for Single Player
+- [x] Implement Pause functionality (button and 'P' key)
 
 ## Future Enhancements
 
