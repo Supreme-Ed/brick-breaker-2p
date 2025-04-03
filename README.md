@@ -4,31 +4,55 @@ A two-player version of the classic Brick Breaker game with enhanced features an
 
 ## Features
 
-- **Two-player gameplay**: Play against a friend or AI
+- **Game Modes**:
+  - Player vs Player: Two human players compete against each other
+  - Player vs AI: Play against an AI opponent with adjustable difficulty
+  - AI vs AI: Watch two AI opponents play against each other (demonstration mode)
 - **Ball Physics**: Frame-independent movement with adjustable speed and size
 - **Power-ups**:
   - Freeze ray to temporarily disable opponent's paddle
   - Wide paddle to increase paddle size
-  - Laser to destroy bricks in a straight line
+  - Laser to destroy bricks in a straight line and temporarily turn opponent paddle to ash
+- **Pause/Resume**: Pause and resume the game using the 'P' key or the dedicated UI button.
 - **Multiple brick patterns**: Standard, Checkerboard, Diamond, Random, Zigzag
 - **Scoring System**: 
-  - 1 point for breaking a brick
-  - 2 points for getting a ball past opponent's border
+  - 5 points for breaking a brick
+  - 5 points for lasering a brick
+  - 10 points for getting a ball past opponent's boundary
+  - 20 points bonus when all bricks are cleared
+  - Currently no score limit or win condition based on points
 - **Controls**:
   - **Keyboard**: 
     - Player 1: Arrow keys for movement, Space to shoot
     - Player 2: A/D keys for movement, S to shoot
-  - **Mouse**: Move paddle with mouse (Player 1 in PvA mode)
+  - **Mouse**: Move paddle with mouse (Player 1 in PvA or Single Player mode), Click to shoot power-up.
   - **Touch**: 
-    - Bottom half of screen controls Player 1
-    - Top half of screen controls Player 2
-    - Tap in center area to shoot power-ups
+    - Player 1 (Bottom): Touch & Drag lower screen half (Move), Tap lower screen half (Power-up)
+    - Player 2 (Top): Touch & Drag upper screen half (Move), Tap upper screen half (Power-up)
+  - **Pause/Resume**: 'P' Key or Pause/Resume Button
+  - **Return to Menu**: ESC Key or Return to Menu Button
 
 ## Getting Started
 
 1. Clone the repository
-2. Open `index.html` in your browser
-3. Select game mode and start playing!
+2. Install dependencies (required for running tests):
+   ```bash
+   npm install
+   ```
+3. Start a local server:
+   ```bash
+   npx http-server -c-1
+   ```
+4. Open the provided URL in your browser (typically http://localhost:8080)
+5. Select game mode and start playing!
+
+## Technology
+
+- Vanilla JavaScript for game logic and rendering
+- HTML5 Canvas for graphics
+- CSS for styling and UI elements
+- Jest for unit testing
+- Playwright for end-to-end testing
 
 ## Testing
 

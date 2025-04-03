@@ -10,12 +10,14 @@ export class Renderer {
     }
     
     clear() {
-        // Clear the entire canvas
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        // Clear the canvas with black background
+        this.ctx.fillStyle = '#000000'; // Black background
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
     
     drawBackground() {
-        // Draw gradient background
+        // Draw gradient background - Commented out to use solid black from clear()
+        /*
         const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
         gradient.addColorStop(0, '#2c3e50');
         gradient.addColorStop(0.5, '#34495e');
@@ -23,6 +25,7 @@ export class Renderer {
         
         this.ctx.fillStyle = gradient;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        */
     }
     
     drawScore(paddle1, paddle2, player1Name = 'Player 1', player2Name = 'Player 2') {

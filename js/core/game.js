@@ -148,6 +148,21 @@ class Game {
     }
     
     gameLoop(timestamp) {
+        // Always check for Pause key ('P') press, regardless of game state
+        if (this.input.isPauseKeyPressed()) {
+            console.log('[Game Loop] \'P\' key detected, calling togglePause'); // DEBUG
+            this.togglePause(); // This now handles state checking internally
+            console.log(`[Game Loop] State after P key toggle: ${this.gameState.state}`); // DEBUG
+            // If we just paused, skip the rest of the loop for this frame
+            if (this.gameState.isPaused()) {
+                console.log('[Game Loop] Game is paused. Calling drawPauseScreen.'); // DEBUG
+                this.renderer.drawPauseScreen();
+                // Continue the loop to keep checking for resume and rendering pause screen
+                requestAnimationFrame(this.gameLoop.bind(this));
+                return;
+            }
+        }
+
         // Restore original deltaTime calculation
         const currentTime = timestamp || performance.now(); 
         const deltaTime = (currentTime - this.lastTime) / 1000;
@@ -179,15 +194,6 @@ class Game {
             this.gameState.handleEvent({ type: 'escape' });
             console.warn('[Game Update] Escape key pressed, toggling pause via gameState.handleEvent'); // DEBUG: Note this path is different
             return;
-        }
-        
-        // Check for pause key 'p'
-        if (this.input.isPauseKeyPressed()) {
-            console.log('[Game Update] \'P\' key detected, calling togglePause'); // DEBUG
-            this.togglePause();
-            // Check the state immediately after toggle
-            console.log(`[Game Update] State after P key toggle: ${this.gameState.state}`); // DEBUG
-            return; // Stop further updates in this frame if paused
         }
         
         // Get input state
