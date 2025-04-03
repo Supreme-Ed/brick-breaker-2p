@@ -126,7 +126,7 @@
 
     <script>
         function startGame(mode) {
-            let url = `brick-breaker.html?mode=${mode}`;
+            let url = `game.html?mode=${mode}`;
             if (mode === 1) {
                 const selectedControl = document.querySelector('input[name="p1Control"]:checked').value;
                 url += `&control=${selectedControl}`;

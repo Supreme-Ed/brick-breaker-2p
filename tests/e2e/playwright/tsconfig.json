@@ -1,3 +1,10 @@
+/**
+ * TypeScript configuration for Playwright E2E tests
+ * 
+ * This file configures TypeScript to type-check JavaScript files without emitting output.
+ * It enables strict type checking and includes Playwright and Node.js type definitions.
+ * Used for providing type safety to our end-to-end tests while keeping them as JavaScript.
+ */
 {
   "compilerOptions": {
     "target": "ES2016", // Or your desired target

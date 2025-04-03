@@ -33,7 +33,7 @@ describe('Main Menu Functionality', () => {
     
     // Create a mock for the startGame function
     window.startGame = jest.fn((mode) => {
-      let url = `brick-breaker.html?mode=${mode}`;
+      let url = `game.html?mode=${mode}`;
       if (mode === 1) {
         const selectedControl = document.querySelector('input[name="p1Control"]:checked').value;
         url += `&control=${selectedControl}`;
@@ -68,7 +68,7 @@ describe('Main Menu Functionality', () => {
     expect(window.startGame).toHaveBeenCalledWith(1);
     
     // Check if the URL was updated correctly (with keyboard control by default)
-    expect(window.location.href).toBe('brick-breaker.html?mode=1&control=keyboard');
+    expect(window.location.href).toBe('game.html?mode=1&control=keyboard');
   });
 
   test('Two Players button should navigate to game with correct parameters', () => {
@@ -82,7 +82,7 @@ describe('Main Menu Functionality', () => {
     expect(window.startGame).toHaveBeenCalledWith(2);
     
     // Check if the URL was updated correctly
-    expect(window.location.href).toBe('brick-breaker.html?mode=2');
+    expect(window.location.href).toBe('game.html?mode=2');
   });
 
   test('AI vs. AI button should navigate to game with correct parameters', () => {
@@ -96,7 +96,7 @@ describe('Main Menu Functionality', () => {
     expect(window.startGame).toHaveBeenCalledWith(3);
     
     // Check if the URL was updated correctly
-    expect(window.location.href).toBe('brick-breaker.html?mode=3');
+    expect(window.location.href).toBe('game.html?mode=3');
   });
 
   test('Control method radio buttons should work correctly', () => {
@@ -117,7 +117,7 @@ describe('Main Menu Functionality', () => {
     singlePlayerBtn.click();
     
     // Check if the URL was updated with mouse control
-    expect(window.location.href).toBe('brick-breaker.html?mode=1&control=mouse');
+    expect(window.location.href).toBe('game.html?mode=1&control=mouse');
   });
 
   test('Return to start screen function should navigate back to index.html', () => {

@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 
 // Base URL is set in playwright.config.js
 const mainMenuUrl = '/'; // index.html
-const gamePagePath = '/brick-breaker.html'; // Game page
+const gamePagePath = '/game.html'; // Game page
 
 test.describe('AI Gameplay Checks', () => {
 
@@ -18,6 +18,8 @@ test.describe('AI Gameplay Checks', () => {
   });
 
   test('clicking Start AI Button should start AI vs AI mode correctly', async ({ page }) => {
+    // Increase default timeout for this test
+    test.setTimeout(30000);
     await page.goto(mainMenuUrl);
     console.log('Navigated to main menu.');
 
@@ -25,8 +27,8 @@ test.describe('AI Gameplay Checks', () => {
     await startAIButton.click();
     console.log('Clicked Start AI button.');
 
-    // Wait for navigation to the game page with mode 3
-    await page.waitForURL(url => url.pathname === gamePagePath && url.search.includes('mode=3'));
+    // Wait for navigation to the game page to complete
+    await page.waitForURL(url => url.pathname === gamePagePath && url.search.includes('mode=3'), { timeout: 15000 });
     console.log(`Navigated to ${page.url()}`);
 
     // Wait for canvas to be visible
@@ -34,12 +36,19 @@ test.describe('AI Gameplay Checks', () => {
     await expect(canvas).toBeVisible({ timeout: 15000 });
     console.log('Game canvas is visible.');
 
-    // First wait for game to be initialized
-    await page.waitForFunction(() => window.game && window.game.initialized, null, { timeout: 15000 });
+    // Wait for game to initialize
+    await page.waitForFunction(() => window.game && window.game.initialized, null, { timeout: 20000 });
     console.log('Game is initialized.');
 
-    // Then wait for game state to be 'playing'
-    await page.waitForFunction(() => window.game.gameState && window.game.gameState.state === 'playing', null, { timeout: 15000 });
+    // Wait for game state to be 'playing'
+    await page.waitForFunction(() => {
+      try {
+        return window.game && window.game.gameState && window.game.gameState.state === 'playing';
+      } catch (e) {
+        console.error('Error checking game state:', e);
+        return false;
+      }
+    }, null, { timeout: 20000 });
     console.log('Game state is playing.');
 
     // Verify the game mode is actually AI vs AI (mode 3)

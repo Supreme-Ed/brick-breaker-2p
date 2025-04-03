@@ -47,7 +47,7 @@ describe('Game Controls Integration', () => {
     // Mock window location
     delete window.location;
     window.location = { 
-      href: 'brick-breaker.html?mode=1&control=keyboard',
+      href: 'game.html?mode=1&control=keyboard',
       search: '?mode=1&control=keyboard'
     };
     

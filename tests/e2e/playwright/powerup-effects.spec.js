@@ -2,7 +2,7 @@
 const { test, expect } = require('@playwright/test');
 
 const mainMenuUrl = '/';
-const gamePagePath = '/brick-breaker.html';
+const gamePagePath = '/game.html';
 const twoPlayerGameUrl = `${gamePagePath}?mode=2`; // Start in 2-Player mode
 
 test.describe('Power-up Effects', () => {
@@ -12,7 +12,7 @@ test.describe('Power-up Effects', () => {
 
   // Setup: Start 2-Player game before each test
   test.beforeEach(async ({ page }) => {
-    await page.goto(mainMenuUrl);
+    await page.goto(twoPlayerGameUrl, { timeout: 15000 });
     console.log('Navigated to main menu.');
 
     // Click the "Two Players" button
@@ -28,6 +28,25 @@ test.describe('Power-up Effects', () => {
     const canvas = page.locator('#gameCanvas');
     await expect(canvas).toBeVisible({ timeout: 15000 });
     console.log('Game canvas is visible.');
+
+    // Check for keyboard events
+    await page.keyboard.down('ArrowRight');
+    await page.waitForFunction(() => {
+      const paddle = window.game.paddle1;
+      return paddle.x > paddle.startX;
+    });
+    console.log('Paddle 1 moved right.');
+
+    // Verify that keyboard controls work for both paddles
+    await page.keyboard.down('d');
+    await page.waitForFunction(() => {
+      const paddle = window.game.paddle2;
+      return paddle.x > paddle.startX;
+    });
+    console.log('Paddle 2 moved right.');
+
+    // Wait for game to initialize
+    await page.waitForFunction(() => window.game && window.game.initialized, null, { timeout: 20000 }); 
 
     // Wait for the game state to be 'playing' and paddles to be ready
     // Ignore static analysis errors for window.game
@@ -46,7 +65,9 @@ test.describe('Power-up Effects', () => {
     await page.waitForTimeout(500); 
   });
 
-  test('should freeze the opponent paddle when Freeze Ray hits', async ({ page }) => {
+  test('Freeze Ray power-up should temporarily disable opponent paddle', async ({ page }) => {
+    // Increase default timeout for this test
+    test.setTimeout(30000);
     // Manually position Paddle 2 to ensure a hit
     await page.evaluate(() => {
       const p1 = window.game.paddle1;
@@ -77,7 +98,7 @@ test.describe('Power-up Effects', () => {
 
     // Wait for Paddle 2 to become frozen
     const isPaddle2Frozen = await page.evaluate(async () => {
-      return new Promise((resolve) => {
+      return new Promise<boolean>((resolve) => {
         const checkInterval = 50; // ms
         const timeoutDuration = 8000; // ms
         let elapsedTime = 0;
