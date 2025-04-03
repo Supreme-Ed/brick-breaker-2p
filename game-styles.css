@@ -42,16 +42,26 @@
     min-width: auto; /* Allow buttons to be smaller */
 }
 
-canvas {
-    background: #000; /* Keep canvas black for contrast? Or use theme var? */
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
-    border: 2px solid var(--neon-blue); /* Use theme color */
-    box-shadow: 0 0 15px var(--glow-color); /* Add glow */
-    max-width: 100%; /* Make canvas responsive */
-    height: auto; /* Maintain aspect ratio */
-    width: 800px; /* Set explicit width for consistency with top bar */
+/* Canvas Styling for Responsiveness */
+#canvas-container {
+    width: 100%; /* Take full width available */
+    /* Limit size based on viewport, maintaining aspect ratio */
+    max-width: min(800px, 100vw); /* Limit to 800px or viewport width */
+    /* Limit height, subtracting space for top bar (~50-70px) and some breathing room */
+    max-height: calc(100vh - 70px); 
+    margin: 10px auto; /* Center the container and add some vertical space */
+    position: relative; /* Needed for potential absolute positioning inside */
+    /* Ensure container respects the aspect ratio of the canvas (800/600 = 4/3) */
+    /* This helps if only max-height is the constraint */
+    aspect-ratio: 800 / 600;
+}
+
+/* Default canvas style - scales based on container */
+#gameCanvas {
+    display: block; /* Remove extra space below canvas */
+    width: 100%;    /* Make canvas fill its container width */
+    height: auto;   /* Maintain aspect ratio based on width */
+    background-color: #000; /* Ensure background shows if aspect ratio mismatches slightly */
 }
 
 /* Overlay screen styles (Game Over, Pause) */
@@ -137,4 +147,51 @@ canvas {
 #player2PowerUp, #player2LaserPowerUp {
     top: 40px;
     right: 10px;
+}
+
+/* Add Media Query for smaller screens */
+@media (max-width: 600px) {
+    #top-bar {
+        flex-wrap: wrap; /* Allow items to wrap onto the next line */
+        justify-content: center; /* Center items when wrapped */
+        padding: 10px 5px; /* Adjust padding */
+    }
+
+    #scores span {
+        font-size: 0.9em; /* Slightly smaller score font */
+        margin: 5px 10px; /* Adjust margin for wrapped layout */
+    }
+
+    #game-controls .button {
+        font-size: 0.8em; /* Smaller button text */
+        padding: 8px 12px; /* Adjust padding */
+        margin: 5px;       /* Add margin for spacing when wrapped */
+    }
+}
+
+/* Specific adjustments for Landscape Mobile */
+@media (orientation: landscape) and (max-height: 500px) { /* Target shorter landscape heights */
+    #canvas-container {
+        /* Prioritize fitting height */
+        height: calc(100vh - 70px); /* Use available viewport height (minus top bar) */
+        width: auto; /* Let aspect-ratio calculate width based on height */
+        max-height: calc(100vh - 70px); /* Explicit max */
+        max-width: 100vw; /* Ensure it doesn't overflow width */
+    }
+
+    #gameCanvas {
+        height: 100%; /* Fill the container's constrained height */
+        width: auto;  /* Let browser calculate width based on height and aspect ratio */
+    }
+
+    /* Optionally tweak top bar for landscape */
+    #top-bar {
+        padding: 5px 10px; /* Slightly less padding */
+        flex-wrap: nowrap; /* Prevent wrapping in landscape */
+    }
+
+    #scores span,
+    #game-controls .button {
+        font-size: 0.8em; /* Ensure fonts are small */
+    }
 }
