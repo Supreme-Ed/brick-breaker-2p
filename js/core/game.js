@@ -29,6 +29,7 @@ class Game {
         this.physics = createPhysicsSystem(this.canvas.width, this.canvas.height);
         this.gameState = createGameStateManager();
         this.input = createInputManager(this.canvas);
+        this.isTouchEnvironment = this.input.isTouchDevice; // Check touch environment
         
         // Initialize game objects
         this.paddle1 = createPaddle(false, this.canvas.width, this.canvas.height);
@@ -70,8 +71,18 @@ class Game {
     }
     
     init(mode, controlMethod) {
+        // Store the game mode
+        this.gameMode = mode;
+
+        // Determine final control method, overriding for touch devices in P1 vs AI
+        let finalControlMethod = controlMethod;
+        if (this.gameMode === 1 && this.isTouchEnvironment) {
+            finalControlMethod = 'mouse'; // Force mouse/touch controls
+        }
+        this.controlMethod = finalControlMethod; // Store final method on Game instance
+        
         // Initialize game state
-        this.gameState.init(mode, controlMethod);
+        this.gameState.init(this.gameMode, this.controlMethod);
         
         // Reset game objects
         this.resetGame();
@@ -241,8 +252,11 @@ class Game {
                 
                 // Check for mouse click to shoot
                 const isP1ShootTriggered = this.input.isMousePressed() && mousePosition.y > this.canvas.height / 2;
-                if (isP1ShootTriggered) {
-                    console.log(`P1 Shoot Condition Met: isMousePressed=${this.input.isMousePressed()}, mouseY=${mousePosition.y.toFixed(2)} > ${this.canvas.height / 2}`);
+                const tapped = this.input.wasTapped();
+                const tapPosition = this.input.getTapPosition(); // Clears tap position after getting
+                const isP1TapTriggered = tapped && tapPosition && tapPosition.y > this.canvas.height / 2;
+                
+                if (isP1ShootTriggered || isP1TapTriggered) {
                     this.shootAction(1);
                 }
             } else {

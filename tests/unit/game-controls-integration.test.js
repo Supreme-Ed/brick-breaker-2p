@@ -13,6 +13,9 @@ describe('Game Controls Integration', () => {
   
   // Setup test environment
   beforeEach(() => {
+    // Clear all mocks before each test to prevent interference
+    jest.clearAllMocks();
+    
     // Create canvas and game UI elements
     document.body.innerHTML = `
       <canvas id="gameCanvas" width="800" height="600"></canvas>

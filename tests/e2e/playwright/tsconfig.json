@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2016", // Or your desired target
+    "module": "CommonJS",
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true, // Don't emit JS files, just type check
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "types": ["@playwright/test", "node"] // Include Playwright and Node types
+  },
+  "include": [
+    "./**/*.js", // Include all JS files in this directory and subdirectories
+    "./**/*.ts", // Include all TS files (like our global.d.ts)
+    "./global.d.ts" // Explicitly include the global declaration
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

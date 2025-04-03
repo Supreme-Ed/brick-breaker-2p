@@ -53,9 +53,8 @@ class LaserBeam {
         // Check for brick collisions FIRST
         if (this.progress < 1) { 
             brickHit = this.checkBrickCollisions(bricks); 
-            if (brickHit) {
-                this.fading = true; // Start fading if a brick is hit
-            }
+            // Removed: Hitting a brick no longer causes immediate fading.
+            // The beam continues to destroy other bricks in its path.
         } else { 
             this.progress = 1; // Cap progress at 1
         }
@@ -125,11 +124,18 @@ class LaserBeam {
                 
                 // Check if laser passes through this brick
                 if (this.x >= brickX && this.x <= brickX + brick.width) {
-                    // Check if laser has reached this brick's y-position
-                    if ((startY <= brickY && endY >= brickY) || 
-                        (startY >= brickY && endY <= brickY + brick.height) ||
-                        (startY <= brickY + brick.height && endY >= brickY + brick.height)) {
-                        
+                    // Refined Vertical Check:
+                    const tipY = this.owner === 1 ? endY : startY; // Tip is endY if going up, startY if going down (initially)
+                    const beamBaseY = this.owner === 1 ? startY : endY; // Base is startY if going up, endY if going down
+
+                    if (
+                        (
+                            (tipY <= brickY + brick.height && tipY >= brickY) || // Tip is inside brick
+                            (beamBaseY <= brickY + brick.height && beamBaseY >= brickY) || // Base is inside brick
+                            (tipY < brickY && beamBaseY > brickY + brick.height) || // Beam passes completely through
+                            (beamBaseY < brickY && tipY > brickY + brick.height)    // Beam passes completely through (other direction)
+                        )
+                    ) {
                         // Mark brick as hit
                         brick.status = 0;
                         

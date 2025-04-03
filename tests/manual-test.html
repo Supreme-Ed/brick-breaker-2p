@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Power-up Effects Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .test-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .test-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border: 1px solid #ccc;
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .results {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Power-up Effects Test</h1>
+        
+        <div class="test-section">
+            <div class="test-title">Freeze Ray Effect Test</div>
+            <canvas id="freezeCanvas" width="600" height="400"></canvas>
+            <div class="button-container">
+                <button id="testFreezeRay">Test Freeze Ray</button>
+                <button id="resetFreezeTest">Reset</button>
+            </div>
+            <div id="freezeResults" class="results"></div>
+        </div>
+        
+        <div class="test-section">
+            <div class="test-title">Laser Beam Effect Test</div>
+            <canvas id="laserCanvas" width="600" height="400"></canvas>
+            <div class="button-container">
+                <button id="testLaserBeam">Test Laser Beam</button>
+                <button id="resetLaserTest">Reset</button>
+            </div>
+            <div id="laserResults" class="results"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { Paddle } from './js/entities/paddle.js';
+        import { FreezeRay } from './js/powerups/freezeRay.js';
+        import { LaserBeam } from './js/powerups/laserBeam.js';
+
+        // Freeze Ray Test
+        const freezeCanvas = document.getElementById('freezeCanvas');
+        const freezeCtx = freezeCanvas.getContext('2d');
+        const freezeResults = document.getElementById('freezeResults');
+        let freezePaddle, freezeRay, freezeAnimationId;
+
+        function initializeFreezeTest() {
+            // Create paddle
+            freezePaddle = new Paddle(250, 200, 100, 20, false, freezeCanvas.width);
+            freezeResults.textContent = 'Test initialized. Click "Test Freeze Ray" to run the test.';
+            
+            // Draw initial state
+            freezeCtx.clearRect(0, 0, freezeCanvas.width, freezeCanvas.height);
+            freezePaddle.draw(freezeCtx);
+        }
+
+        function runFreezeTest() {
+            // Create freeze ray
+            freezeRay = new FreezeRay(freezePaddle.x + freezePaddle.width / 2, 50, 2, freezeCanvas.height);
+            freezeResults.textContent = 'Running test...';
+            
+            // Start animation loop
+            cancelAnimationFrame(freezeAnimationId);
+            freezeAnimationLoop(0);
+        }
+
+        function freezeAnimationLoop(timestamp) {
+            freezeCtx.clearRect(0, 0, freezeCanvas.width, freezeCanvas.height);
+            
+            // Update freeze ray
+            if (freezeRay && !freezeRay.isExpired) {
+                const hit = freezeRay.update(null, freezePaddle);
+                freezeRay.draw(freezeCtx);
+                
+                if (hit) {
+                    freezeResults.textContent = 'SUCCESS: Paddle was frozen! The paddle should be visible with ice effect.';
+                }
+            }
+            
+            // Update and draw paddle
+            freezePaddle.update(0.016);
+            freezePaddle.draw(freezeCtx);
+            
+            // Continue animation
+            freezeAnimationId = requestAnimationFrame(freezeAnimationLoop);
+        }
+
+        // Laser Beam Test
+        const laserCanvas = document.getElementById('laserCanvas');
+        const laserCtx = laserCanvas.getContext('2d');
+        const laserResults = document.getElementById('laserResults');
+        let laserPaddle, laserBeam, laserAnimationId;
+
+        function initializeLaserTest() {
+            // Create paddle
+            laserPaddle = new Paddle(250, 200, 100, 20, false, laserCanvas.width);
+            laserResults.textContent = 'Test initialized. Click "Test Laser Beam" to run the test.';
+            
+            // Draw initial state
+            laserCtx.clearRect(0, 0, laserCanvas.width, laserCanvas.height);
+            laserPaddle.draw(laserCtx);
+        }
+
+        function runLaserTest() {
+            // Create laser beam
+            laserBeam = new LaserBeam(laserPaddle.x + laserPaddle.width / 2, 50, 2, laserCanvas.height);
+            laserResults.textContent = 'Running test...';
+            
+            // Start animation loop
+            cancelAnimationFrame(laserAnimationId);
+            laserAnimationLoop(0);
+        }
+
+        function laserAnimationLoop(timestamp) {
+            laserCtx.clearRect(0, 0, laserCanvas.width, laserCanvas.height);
+            
+            // Update laser beam
+            if (laserBeam && !laserBeam.isExpired) {
+                const hit = laserBeam.update(null, laserPaddle);
+                laserBeam.draw(laserCtx);
+                
+                if (laserPaddle.isAshes) {
+                    laserResults.textContent = 'SUCCESS: Paddle was turned to ashes! The paddle should be visible with ash effect.';
+                }
+            }
+            
+            // Update and draw paddle
+            laserPaddle.update(0.016);
+            laserPaddle.draw(laserCtx);
+            
+            // Continue animation
+            laserAnimationId = requestAnimationFrame(laserAnimationLoop);
+        }
+
+        // Event listeners
+        document.getElementById('testFreezeRay').addEventListener('click', runFreezeTest);
+        document.getElementById('resetFreezeTest').addEventListener('click', initializeFreezeTest);
+        document.getElementById('testLaserBeam').addEventListener('click', runLaserTest);
+        document.getElementById('resetLaserTest').addEventListener('click', initializeLaserTest);
+
+        // Initialize tests
+        initializeFreezeTest();
+        initializeLaserTest();
+    </script>
+</body>
+</html>

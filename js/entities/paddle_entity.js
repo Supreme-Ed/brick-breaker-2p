@@ -30,9 +30,11 @@ class Paddle {
         this.isTopPaddle = isTopPaddle;
         this.canvasWidth = canvasWidth;
         this.speed = 8; // Base movement speed
+        this.aiReactionTime = 0; // Timer for AI reaction delay
+        this.aiReactionDelay = 0.1; // Delay in seconds before AI reacts
     }
 
-    update(deltaTime, keys, isAI = false, aiTarget = null) {
+    update(deltaTime, keys, isAI = false, balls = [], gameManager = null) { 
         // Handle power-up timers
         this.updatePowerUpTimers(deltaTime);
         
@@ -43,8 +45,8 @@ class Paddle {
         if (this.isAshes) return;
         
         if (isAI) {
-            // AI movement
-            this.updateAIMovement(aiTarget);
+            // AI updates (movement and shooting)
+            this.updateAI(deltaTime, balls, gameManager);
         } else if (this.targetX !== null) {
             // Mouse/touch movement
             this.updateTargetMovement();
@@ -124,20 +126,116 @@ class Paddle {
         }
     }
     
-    updateAIMovement(targetX) {
-        // Simple, direct movement toward target - no jitter or complex calculations
-        if (targetX !== null) {
-            const paddleCenter = this.x + this.width / 2;
-            const distance = targetX - paddleCenter;
-            
-            // Move directly toward target with a small deadzone
-            if (Math.abs(distance) > 5) {
-                // Set speed based on distance for smoother movement
-                const moveSpeed = Math.min(Math.abs(distance) * 0.1, this.speed * 0.8);
-                this.dx = distance > 0 ? moveSpeed : -moveSpeed;
-                this.x += this.dx;
-            } else {
-                this.dx = 0;
+    updateAI(deltaTime, balls = [], gameManager = null) { 
+        if (!balls || balls.length === 0 || !gameManager) { 
+            this.dx = 0; 
+            return; // Need balls and game manager for AI
+        } 
+
+        // Apply reaction time delay
+        this.aiReactionTime += deltaTime;
+        if (this.aiReactionTime < this.aiReactionDelay) {
+            // Maintain current dx or slightly dampen it while waiting
+             this.dx *= 0.95; 
+             this.x += this.dx;
+             this.keepInBounds();
+            return; 
+        }
+        // Reset timer for next reaction
+        this.aiReactionTime = 0;
+
+        // --- Ball Tracking Logic (from original) ---
+        const isBottomPaddle = !this.isTopPaddle;
+        // Filter balls moving towards the AI paddle
+        const approachingBalls = balls.filter(ball => 
+            (isBottomPaddle ? ball.dy > 0 : ball.dy < 0)
+        );
+
+        let ballToTrack;
+        if (approachingBalls.length > 0) {
+            // Prioritize balls last hit by this AI or owned by this AI
+            ballToTrack = approachingBalls.find(ball => ball.lastHitBy === (this.isTopPaddle ? 2 : 1) || ball.owner === (this.isTopPaddle ? 2 : 1));
+            if (!ballToTrack) {
+                // If no owned/last-hit ball, track the closest one vertically
+                approachingBalls.sort((a, b) =>
+                    isBottomPaddle ? (this.y - a.y) - (this.y - b.y) : (a.y - this.y) - (b.y - this.y)
+                );
+                ballToTrack = approachingBalls[0];
+            }
+        } else {
+            // If no balls are approaching, track any owned/last-hit ball, or the first ball as fallback
+            ballToTrack = balls.find(ball => ball.lastHitBy === (this.isTopPaddle ? 2 : 1) || ball.owner === (this.isTopPaddle ? 2 : 1)) || balls[0];
+        }
+        
+        if (!ballToTrack) { // Final fallback if no balls exist
+            this.dx = 0;
+            return;
+        }
+
+        // --- Movement Calculation (from original) ---
+        // Aim for the center of the paddle to intercept the ball's x position
+        const targetX = ballToTrack.x - this.width / 2;
+        const diff = targetX - this.x;
+        const randomness = (Math.random() - 0.5) * 15; // Introduce slight unpredictability
+        const maxSpeed = this.speed * 0.7; // AI speed limit (slightly slower than player)
+
+        if (Math.abs(diff) > 10) { // Only adjust significantly if far from target
+            // Speed increases slightly with distance, capped by maxSpeed
+            const speedFactor = Math.min(0.2, 0.1 + Math.abs(diff) / 1000);
+            this.dx = diff * speedFactor + randomness * 0.05;
+            // Clamp speed to maxSpeed
+            this.dx = Math.max(-maxSpeed, Math.min(maxSpeed, this.dx)); 
+        } else {
+            // Dampen movement when close to the target
+            this.dx *= 0.8; 
+        }
+        this.x += this.dx;
+
+        // --- AI Shooting Logic (moved to separate function, called here) ---
+        this.updateAIShooting(gameManager);
+        
+        // Ensure paddle stays within bounds (already called in main update)
+        // this.keepInBounds(); // Called in parent update method
+    }
+
+    updateAIShooting(gameManager) {
+        if (!gameManager || !gameManager.getOpponentPaddle) return;
+
+        const playerNum = this.isTopPaddle ? 2 : 1;
+        const opponentPaddle = gameManager.getOpponentPaddle(playerNum);
+        if (!opponentPaddle) return;
+
+        const paddleCenter = this.x + this.width / 2;
+        const opponentCenter = opponentPaddle.x + opponentPaddle.width / 2;
+        const alignmentThreshold = 20; // How close centers need to be
+        const isAligned = Math.abs(paddleCenter - opponentCenter) < alignmentThreshold;
+
+        // AI Shooting Logic (Freeze Ray)
+        if (this.hasFreezeRay) {
+            // Shoot if aligned and random chance passes, OR very small random chance regardless
+            if ((isAligned && Math.random() < 0.1) || Math.random() < 0.005) {
+                 // Check if roughly aiming correctly (optional refinement)
+                 // const aimTargetX = opponentCenter - this.width / 2; 
+                 // if (Math.abs(this.x - aimTargetX) < 15 || isAligned) { 
+                    if (gameManager.shootFreezeRay) { // Check if function exists
+                       gameManager.shootFreezeRay(playerNum);
+                       // Power-up consumed status is likely handled within shootFreezeRay/gameManager
+                    }
+                // }
+            }
+        }
+
+        // AI Shooting Logic (Laser)
+        if (this.hasLaser) {
+            // Similar logic for laser
+            if ((isAligned && Math.random() < 0.1) || Math.random() < 0.005) {
+                 // const aimTargetX = opponentCenter - this.width / 2;
+                 // if (Math.abs(this.x - aimTargetX) < 15 || isAligned) {
+                     if (gameManager.shootLaser) { // Check if function exists
+                         gameManager.shootLaser(playerNum);
+                          // Power-up consumed status is likely handled within shootLaser/gameManager
+                     }
+                 // }
             }
         }
     }

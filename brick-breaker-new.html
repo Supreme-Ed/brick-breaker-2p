@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two-Player Brick Breaker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Start screen removed -->
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="player1PowerUp" class="power-up-indicator">Freeze Ray Ready!</div>
+    <div id="player2PowerUp" class="power-up-indicator">Freeze Ray Ready!</div>
+    <div id="player1LaserPowerUp" class="power-up-indicator">Laser Ready!</div>
+    <div id="player2LaserPowerUp" class="power-up-indicator">Laser Ready!</div>
+    
+    <!-- Add game UI for menu controls -->
+    <div id="gameUI">
+        <button id="returnToMenuBtn" class="ui-button">Return to Menu</button>
+        <button id="restartGameBtn" class="ui-button">Restart Game</button>
+    </div>
+
+    <!-- Load the main module -->
+    <script type="module">
+        import { game } from './js/core/game.js';
+        
+        // Set up button event listeners
+        document.getElementById('returnToMenuBtn').addEventListener('click', () => game.returnToStartScreen());
+        document.getElementById('restartGameBtn').addEventListener('click', () => game.restartGame());
+        
+        // Initialize game when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Get mode from URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const modeParam = urlParams.get('mode');
+            const controlParam = urlParams.get('control');
+            
+            // Determine game mode
+            let gameMode = 1; // Default to Player vs AI
+            let controlMethod = 'keyboard';
+            
+            if (modeParam === '1') {
+                gameMode = 1; // Player vs AI
+                controlMethod = controlParam === 'mouse' ? 'mouse' : 'keyboard';
+                console.log(`[DEBUG] Game Mode: Player vs AI. Player 1 controls: ${controlMethod}`);
+            } else if (modeParam === '2') {
+                gameMode = 2; // Two Players
+                controlMethod = 'keyboard';
+                console.log("[DEBUG] Game Mode: Two Players. Player 1 controls: Keyboard, Player 2 controls: Keyboard");
+            } else if (modeParam === '3') {
+                gameMode = 3; // AI vs AI
+                console.log("[DEBUG] Game Mode: AI vs AI");
+            }
+            
+            // Initialize the game
+            game.init(gameMode, controlMethod);
+        });
+    </script>
+</body>
+</html>

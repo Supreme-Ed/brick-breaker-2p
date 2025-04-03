@@ -10,5 +10,9 @@ module.exports = {
   verbose: true,
   testMatch: ['**/tests/unit/**/*.test.js'],
   // Exclude e2e tests from normal test runs
-  testPathIgnorePatterns: ['/node_modules/', '/tests/e2e/']
+  testPathIgnorePatterns: ['/node_modules/', '/tests/e2e/'],
+  // Transform ES modules using babel-jest
+  transform: {
+    '^.+\\.js$': 'babel-jest',
+  },
 };
