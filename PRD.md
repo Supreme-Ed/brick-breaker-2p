@@ -77,7 +77,7 @@ Brick Breaker 2P is a web-based game that allows players to compete against each
 ### 4.2 Mouse Controls
 - Available for Player 1 in single-player mode
 - Move mouse horizontally to control paddle position
-- Mouse button click to activate power-ups
+- Mouse button click anywhere on the game canvas to activate power-ups
 - Natural and intuitive control method for new players
 
 ### 4.3 Touch Controls

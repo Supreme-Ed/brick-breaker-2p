@@ -23,7 +23,7 @@ This document tracks current and future development tasks for the Brick Breaker 
 - [x] Set Mouse as default control for Single Player
 - [x] Implement Pause functionality (button and 'P' key)
 - [x] Refactor UI: Add top bar for scores/controls and collapsible controls help on start screen
-
+- [x] Refactor mouse power-up activation (removed Y-position check)
 ## Future Enhancements
 
 ### High Priority
@@ -53,6 +53,7 @@ This document tracks current and future development tasks for the Brick Breaker 
 - [x] Fix keyboard power-up activation (spacebar and 's' key) issues
 - [x] Resolve power-up visual and functional failures during extended gameplay
 - [x] Fix Netlify deployment 404 errors with path configuration and redirects
+- [x] Fix erratic AI paddle movement due to missing deltaTime
 - [ ] Address TypeScript "possibly null" warnings
 - [ ] Ensure consistent game performance across different devices
 - [ ] Fix any touch control issues on mobile devices

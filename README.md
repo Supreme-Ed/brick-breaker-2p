@@ -28,7 +28,7 @@ A two-player version of the classic Brick Breaker game with enhanced features an
   - **Keyboard**: 
     - Player 1: Arrow keys for movement, Space to shoot
     - Player 2: A/D keys for movement, S to shoot
-  - **Mouse**: Move paddle with mouse (Player 1 in PvA or Single Player mode), Click to shoot power-up.
+  - **Mouse**: Move paddle with mouse (Player 1 in PvA or Single Player mode), Click anywhere on the game canvas to shoot power-up.
   - **Touch**: 
     - Player 1 (Bottom): Touch & Drag lower screen half (Move), Tap lower screen half (Power-up)
     - Player 2 (Top): Touch & Drag upper screen half (Move), Tap upper screen half (Power-up)
