@@ -54,6 +54,9 @@ class Game {
         this.player2PowerUpIndicator = document.getElementById('player2PowerUp');
         this.player1LaserIndicator = document.getElementById('player1LaserPowerUp');
         this.player2LaserIndicator = document.getElementById('player2LaserPowerUp');
+        this.score1Element = document.getElementById('score1');
+        this.score2Element = document.getElementById('score2');
+        this.topBarElement = document.getElementById('top-bar'); // Get top bar
         
         // Bind methods
         this.update = this.update.bind(this);
@@ -66,9 +69,39 @@ class Game {
         this.shootFreezeRay = this.shootFreezeRay.bind(this);
         this.shootLaser = this.shootLaser.bind(this);
         this.togglePause = this.togglePause.bind(this); // Bind togglePause
+        this.toggleMute = this.toggleMute.bind(this); // Bind toggleMute
         
         // Initialize audio
         audioManager.init();
+        
+        // Get pause button element safely within init
+        this.pauseBtn = document.getElementById('pauseBtn');
+        console.log('[Game Init] Pause button found. Adding listener.'); // DEBUG
+        if (this.pauseBtn) {
+            this.pauseBtn.addEventListener('click', this.togglePause);
+        } else {
+            console.error('[Game Init] Pause button element (#pauseBtn) not found!'); // DEBUG
+        }
+        
+        // Get mute button element safely within init
+        this.muteBtn = document.getElementById('muteButton'); // Get mute button
+        if (this.muteBtn) {
+            this.muteBtn.addEventListener('click', this.toggleMute); // Bind context
+        } else {
+            console.warn('[Game Init] Mute button element (#muteButton) not found.');
+        }
+        
+        // Start the game loop
+        this.lastTime = performance.now(); // Restore lastTime initialization
+        this.gameLoop();
+        
+        // Mark as initialized
+        this.initialized = true;
+        // Play start sound
+        audioManager.playGameStart();
+        
+        // Return the game instance for chaining
+        return this;
     }
     
     init(mode, controlMethod) {
@@ -91,17 +124,7 @@ class Game {
         // Update UI
         this.updateUIButtons();
         
-        // Get pause button element safely within init
-        this.pauseBtn = document.getElementById('pauseBtn');
-        console.log('[Game Init] Pause button found. Adding listener.'); // DEBUG
-        if (this.pauseBtn) {
-            this.pauseBtn.addEventListener('click', this.togglePause);
-        } else {
-            console.error('[Game Init] Pause button element (#pauseBtn) not found!'); // DEBUG
-        }
-        
         // Start the game loop
-        this.lastTime = performance.now(); // Restore lastTime initialization
         this.gameLoop();
         
         // Mark as initialized
@@ -145,6 +168,7 @@ class Game {
         
         // Update UI
         this.updatePowerUpIndicators();
+        this.updateScoreDisplay(); // Update display on reset
     }
     
     gameLoop(timestamp) {
@@ -266,6 +290,7 @@ class Game {
         
         // Update UI
         this.updatePowerUpIndicators();
+        this.updateScoreDisplay(); // Update display
     }
     
     cleanupExpiredEntities() {
@@ -579,6 +604,14 @@ class Game {
             this.pauseBtn.textContent = newState === 'paused' ? 'Resume' : 'Pause';
         }
     }
+    
+    toggleMute() {
+        this.audioManager.toggleMute();
+        if (this.muteBtn) {
+            this.muteBtn.textContent = this.audioManager.isMuted ? 'Unmute' : 'Mute';
+        }
+        console.log(`[AudioManager] Muted state: ${this.audioManager.isMuted}`);
+    }
 
     draw() {
         // Clear canvas
@@ -599,9 +632,6 @@ class Game {
         this.renderer.drawFreezeRays(this.freezeRays);
         this.renderer.drawLaserBeams(this.laserBeams);
         this.renderer.drawParticles(this.particles);
-        
-        // Draw UI
-        this.renderer.drawScore(this.paddle1, this.paddle2, this.gameState.player1Name, this.gameState.player2Name);
         
         // Draw game state messages
         if (this.gameState.isPaused()) {
@@ -667,6 +697,15 @@ class Game {
         }
     }
     
+    updateScoreDisplay() {
+        if (this.score1Element && this.paddle1) {
+            this.score1Element.textContent = `P1: ${this.paddle1.score}`;
+        }
+        if (this.score2Element && this.paddle2) {
+            this.score2Element.textContent = `P2: ${this.paddle2.score}`;
+        }
+    }
+    
     updateUIButtons() {
         const gameUI = document.getElementById('gameUI');
         if (gameUI) {
@@ -674,6 +713,22 @@ class Game {
         }
     }
     
+    showGameUI() {
+        // Show the top bar instead of the old gameUI div
+        if (this.topBarElement) {
+            this.topBarElement.style.display = 'flex'; // Use flex as it's a flex container
+        } else {
+             console.warn('[UI] Top bar element (#top-bar) not found.');
+        }
+    }
+    
+    hideGameUI() {
+        // Hide the top bar
+        if (this.topBarElement) {
+            this.topBarElement.style.display = 'none';
+        }
+    }
+
     returnToStartScreen() {
         this.gameState.returnToStartScreen();
     }

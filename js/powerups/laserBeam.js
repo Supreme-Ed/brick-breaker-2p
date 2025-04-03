@@ -82,19 +82,32 @@ class LaserBeam {
     checkPaddleCollision(paddle1, paddle2, beamTipY, originPaddle) {
         const targetPaddle = originPaddle === paddle1 ? paddle2 : paddle1;
         
-        // Simple AABB collision check
-        if (
-            !targetPaddle.isAshes && // Can't hit an already ashes paddle
-            this.x >= targetPaddle.x &&
-            this.x <= targetPaddle.x + targetPaddle.width
-        ) {
+        // Skip collision check if target paddle is already turned to ashes
+        if (targetPaddle.isAshes) {
+            return null;
+        }
+        
+        // Use a wider collision area for better hit detection
+        // Add a small margin to the laser width for more forgiving collision
+        const laserWidthMargin = 5;
+        const paddleHorizontalHit = 
+            (this.x - laserWidthMargin <= targetPaddle.x + targetPaddle.width) && 
+            (this.x + laserWidthMargin >= targetPaddle.x);
+        
+        if (paddleHorizontalHit) {
             // Check Y collision based on direction
             if (originPaddle === paddle1) { // Travelling up
-                if (beamTipY <= targetPaddle.y + targetPaddle.height && beamTipY >= targetPaddle.y) {
+                // Check if beam tip is within or has passed through the paddle
+                if (beamTipY <= targetPaddle.y + targetPaddle.height && 
+                    (beamTipY >= targetPaddle.y || this.progress >= 1)) {
+                    console.log('[LaserBeam] Hit detected on top paddle');
                     return targetPaddle;
                 }
             } else { // Travelling down
-                if (beamTipY >= targetPaddle.y && beamTipY <= targetPaddle.y + targetPaddle.height) {
+                // Check if beam tip is within or has passed through the paddle
+                if (beamTipY >= targetPaddle.y && 
+                    (beamTipY <= targetPaddle.y + targetPaddle.height || this.progress >= 1)) {
+                    console.log('[LaserBeam] Hit detected on bottom paddle');
                     return targetPaddle;
                 }
             }
@@ -107,6 +120,9 @@ class LaserBeam {
         const startY = this.y;
         const endY = this.y + this.height * this.progress;
         let hitBrick = false;
+        
+        // Add a small margin to the laser width for more forgiving collision
+        const laserWidthMargin = 5;
         
         // Iterate through all bricks to check for collisions
         for (let c = 0; c < bricks.columns; c++) {
@@ -122,20 +138,30 @@ class LaserBeam {
                 const brickX = c * (brick.width + bricks.padding) + bricks.offsetLeft;
                 const brickY = r * (brick.height + bricks.padding) + bricks.offsetTop;
                 
-                // Check if laser passes through this brick
-                if (this.x >= brickX && this.x <= brickX + brick.width) {
-                    // Refined Vertical Check:
-                    const tipY = this.owner === 1 ? endY : startY; // Tip is endY if going up, startY if going down (initially)
-                    const beamBaseY = this.owner === 1 ? startY : endY; // Base is startY if going up, endY if going down
-
-                    if (
-                        (
-                            (tipY <= brickY + brick.height && tipY >= brickY) || // Tip is inside brick
-                            (beamBaseY <= brickY + brick.height && beamBaseY >= brickY) || // Base is inside brick
-                            (tipY < brickY && beamBaseY > brickY + brick.height) || // Beam passes completely through
-                            (beamBaseY < brickY && tipY > brickY + brick.height)    // Beam passes completely through (other direction)
-                        )
-                    ) {
+                // Use a wider collision area for better hit detection
+                const brickHorizontalHit = 
+                    (this.x - laserWidthMargin <= brickX + brick.width) && 
+                    (this.x + laserWidthMargin >= brickX);
+                
+                if (brickHorizontalHit) {
+                    // Determine beam direction and endpoints
+                    const beamTop = this.owner === 1 ? endY : startY; // Top point of beam
+                    const beamBottom = this.owner === 1 ? startY : endY; // Bottom point of beam
+                    const brickTop = brickY;
+                    const brickBottom = brickY + brick.height;
+                    
+                    // Check if beam intersects with brick vertically
+                    const verticalIntersection = 
+                        // Beam top point is inside brick
+                        (beamTop >= brickTop && beamTop <= brickBottom) ||
+                        // Beam bottom point is inside brick
+                        (beamBottom >= brickTop && beamBottom <= brickBottom) ||
+                        // Brick is completely inside beam
+                        (beamTop <= brickTop && beamBottom >= brickBottom) ||
+                        // Beam is completely inside brick
+                        (beamTop >= brickTop && beamBottom <= brickBottom);
+                    
+                    if (verticalIntersection) {
                         // Mark brick as hit
                         brick.status = 0;
                         
@@ -143,8 +169,11 @@ class LaserBeam {
                         this.affectedBricks.push(`${c}-${r}`);
                         
                         // Trigger brick destruction animation
-                        brick.animation.active = true;
+                        if (brick.animation) {
+                            brick.animation.active = true;
+                        }
                         
+                        console.log(`[LaserBeam] Destroyed brick at column ${c}, row ${r}`);
                         hitBrick = true;
                     }
                 }

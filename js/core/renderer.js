@@ -28,20 +28,6 @@ export class Renderer {
         */
     }
     
-    drawScore(paddle1, paddle2, player1Name = 'Player 1', player2Name = 'Player 2') {
-        // Draw scores
-        this.ctx.font = '24px Arial';
-        this.ctx.fillStyle = '#ffffff';
-        
-        // Player 1 Score (Top Left)
-        this.ctx.textAlign = 'left'; 
-        this.ctx.fillText(`${player1Name}: ${paddle1.score}`, 20, 30); // Moved to top left
-        
-        // Player 2 Score (Top Right)
-        this.ctx.textAlign = 'right';
-        this.ctx.fillText(`${player2Name}: ${paddle2.score}`, this.canvas.width - 20, 30); // Moved to top right
-    }
-    
     drawPowerUpIndicators(paddle1, paddle2) {
         // Update power-up indicators
         const player1PowerUpIndicator = document.getElementById('player1PowerUp');

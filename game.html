@@ -4,9 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Two-Player Brick Breaker</title>
-    <link rel="stylesheet" href="styles.css">
+    <!-- <link rel="stylesheet" href="styles.css"> Removed old styles -->
+    <link rel="stylesheet" href="theme.css"> <!-- Added theme styles -->
+    <link rel="stylesheet" href="game-styles.css"> <!-- Added specific game styles -->
 </head>
 <body>
+    <!-- Top Bar for Scores and Controls -->
+    <div id="top-bar">
+        <div id="scores">
+            <span id="score1">P1: 0</span>
+            <span id="score2">P2: 0</span>
+        </div>
+        <div id="game-controls">
+            <button id="returnToMenuBtn" class="ui-button">Menu</button> <!-- Shortened text -->
+            <button id="restartGameBtn" class="ui-button">Restart</button> <!-- Shortened text -->
+            <button id="pauseBtn" class="ui-button">Pause</button>
+            <button id="muteButton" class="ui-button">Mute</button> <!-- Use same class -->
+        </div>
+    </div>
+
     <!-- Game canvas -->
     <canvas id="gameCanvas" width="800" height="600"></canvas>
     
@@ -15,13 +31,6 @@
     <div id="player2PowerUp" class="power-up-indicator">Freeze Ray Ready!</div>
     <div id="player1LaserPowerUp" class="power-up-indicator">Laser Ready!</div>
     <div id="player2LaserPowerUp" class="power-up-indicator">Laser Ready!</div>
-    
-    <!-- Game UI for menu controls -->
-    <div id="gameUI">
-        <button id="returnToMenuBtn" class="ui-button">Return to Menu</button>
-        <button id="restartGameBtn" class="ui-button">Restart Game</button>
-        <button id="pauseBtn" class="ui-button">Pause</button>
-    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/fpsmeter@0.3.1/dist/fpsmeter.min.js"></script>
 

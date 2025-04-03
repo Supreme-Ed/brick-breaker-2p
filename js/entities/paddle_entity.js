@@ -213,37 +213,43 @@ class Paddle {
         const opponentPaddle = gameManager.getOpponentPaddle(playerNum);
         if (!opponentPaddle) return;
 
+        // Don't attempt to shoot if paddle is frozen or turned to ashes
+        if (this.isFrozen || this.isAshes) return;
+
         const paddleCenter = this.x + this.width / 2;
         const opponentCenter = opponentPaddle.x + opponentPaddle.width / 2;
-        const alignmentThreshold = 20; // How close centers need to be
+        const alignmentThreshold = 30; // Increased threshold for better hit chance
         const isAligned = Math.abs(paddleCenter - opponentCenter) < alignmentThreshold;
+
+        // Only shoot if we're reasonably aligned with the opponent
+        if (!isAligned) return;
 
         // AI Shooting Logic (Freeze Ray)
         if (this.hasFreezeRay) {
-            // Shoot if aligned and random chance passes, OR very small random chance regardless
-            if ((isAligned && Math.random() < 0.1) || Math.random() < 0.005) {
-                 // Check if roughly aiming correctly (optional refinement)
-                 // const aimTargetX = opponentCenter - this.width / 2; 
-                 // if (Math.abs(this.x - aimTargetX) < 15 || isAligned) { 
-                    if (gameManager.shootFreezeRay) { // Check if function exists
-                       gameManager.shootFreezeRay(playerNum);
-                       // Power-up consumed status is likely handled within shootFreezeRay/gameManager
-                    }
-                // }
+            // Don't waste freeze ray if opponent is already frozen or ashes
+            if (opponentPaddle.isFrozen || opponentPaddle.isAshes) return;
+            
+            // Higher chance to use freeze ray when well-aligned
+            const useChance = isAligned ? 0.15 : 0.01; // 15% when aligned, 1% randomly
+            
+            if (Math.random() < useChance) {
+                if (gameManager.shootFreezeRay) {
+                    gameManager.shootFreezeRay(playerNum);
+                    console.log(`[AI] Player ${playerNum} used Freeze Ray`);
+                }
             }
         }
 
         // AI Shooting Logic (Laser)
         if (this.hasLaser) {
-            // Similar logic for laser
-            if ((isAligned && Math.random() < 0.1) || Math.random() < 0.005) {
-                 // const aimTargetX = opponentCenter - this.width / 2;
-                 // if (Math.abs(this.x - aimTargetX) < 15 || isAligned) {
-                     if (gameManager.shootLaser) { // Check if function exists
-                         gameManager.shootLaser(playerNum);
-                          // Power-up consumed status is likely handled within shootLaser/gameManager
-                     }
-                 // }
+            // Higher chance to use laser when well-aligned
+            const useChance = isAligned ? 0.2 : 0.01; // 20% when aligned, 1% randomly
+            
+            if (Math.random() < useChance) {
+                if (gameManager.shootLaser) {
+                    gameManager.shootLaser(playerNum);
+                    console.log(`[AI] Player ${playerNum} used Laser`);
+                }
             }
         }
     }
@@ -369,6 +375,8 @@ class Paddle {
     
     activateFreezeRay() {
         this.hasFreezeRay = true;
+        this.hasLaser = false; // Ensure exclusivity
+        console.log('[Paddle] Freeze Ray activated.'); // Add log for confirmation
     }
     
     activateLaser() {

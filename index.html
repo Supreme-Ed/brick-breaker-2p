@@ -4,101 +4,178 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Brick Breaker - Main Menu</title>
+    <link rel="stylesheet" href="theme.css">
     <style>
         body {
             display: flex;
             justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
+            min-height: 100vh;
+            padding: 20px 0;
         }
+
         #startScreen {
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            padding: 20px;
+            background: rgba(0, 0, 10, 0.85);
+            padding: 50px 30px 10px 30px;
             text-align: center;
-            border-radius: 10px;
-            font-family: Arial, sans-serif;
+            border-radius: 0;
+            border: 2px solid var(--neon-blue);
+            box-shadow: 0 0 25px var(--glow-color);
+            width: 90%;
+            max-width: 600px;
+            height: fit-content; /* Force height to match content */
+            transition: padding-bottom 0.5s ease-in-out;
         }
+
+        #startScreen.controls-expanded {
+            padding-bottom: 30px;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+            margin-top: 0;
+            font-size: 2.5em;
+            color: var(--neon-blue);
+            text-shadow: 0 0 10px var(--glow-color), 0 0 20px var(--glow-color);
+            letter-spacing: 2px;
+        }
+
         .button {
-            background: #4CAF50;
-            color: white;
-            padding: 10px 20px;
-            margin: 10px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
+            margin: 15px 10px;
         }
-        .button:hover {
-            background: #45a049;
-        }
+
         .controls {
-            margin: 20px;
-            text-align: left;
-            font-size: 14px;
+            /* Hide using max-height for transition */
+            max-height: 0;
+            margin: 30px auto; /* Base margin */
+            margin-top: 0;     /* Override top margin when hidden */
+            margin-bottom: 0;  /* Override bottom margin when hidden */
+            padding-top: 0; /* Collapse padding when hidden */
+            padding-bottom: 0; /* Collapse padding when hidden */
+            overflow: hidden; /* Needed for smooth transition */
+            opacity: 0; /* Fade out */
+            transition: max-height 0.5s ease-in-out, 
+                        opacity 0.5s ease-in-out, 
+                        padding-top 0.5s ease-in-out, 
+                        padding-bottom 0.5s ease-in-out, 
+                        margin-top 0.5s ease-in-out,
+                        margin-bottom 0.5s ease-in-out; /* Add transition for margin-bottom */
         }
-        /* Fix for radio button styling */
+
+        .controls.visible {
+            max-height: 1000px; /* Set large max-height to reveal content */
+            margin: 30px auto; /* Restore original margins */
+            /* Restore padding individually for transition */
+            padding-top: 15px;    
+            padding-bottom: 15px; 
+            opacity: 1; /* Fade in */
+        }
+
         .control-options {
-            margin-bottom: 15px;
+            margin: 25px 0 15px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            font-size: 0.8em;
+        }
+
+        .control-options > label {
+            margin-bottom: 5px;
+            color: var(--neon-blue);
+        }
+
+        .control-options-inner {
             display: flex;
             justify-content: center;
-            align-items: center;
-            gap: 10px;
+            gap: 20px;
+            flex-wrap: wrap;
         }
+
         .control-option {
             display: flex;
             align-items: center;
-            margin: 0 10px;
         }
+
         .control-option input[type="radio"] {
-            margin-right: 5px;
+            margin-right: 8px;
             appearance: none;
-            width: 18px;
-            height: 18px;
-            border: 2px solid white;
-            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--neon-blue);
+            border-radius: 0;
             outline: none;
             position: relative;
+            cursor: pointer;
+            background-color: transparent;
         }
+
         .control-option input[type="radio"]:checked::after {
             content: "";
             position: absolute;
-            top: 3px;
-            left: 3px;
+            top: 2px;
+            left: 2px;
             width: 8px;
             height: 8px;
-            border-radius: 50%;
-            background-color: #4CAF50;
+            background-color: var(--neon-blue);
+            box-shadow: 0 0 8px var(--glow-color);
         }
-        .control-option input[type="radio"]:not(:checked)::after {
-            content: "";
-            position: absolute;
-            top: 3px;
-            left: 3px;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: black;
-        }
+
         .control-option label {
             cursor: pointer;
             -webkit-user-select: none;
             user-select: none;
-            font-weight: bold;
-            margin-left: 3px;
+            font-weight: normal;
         }
-        /* Make selected label more obvious */
+
         .control-option input[type="radio"]:checked + label {
-            color: #4CAF50;
+            color: var(--neon-blue);
+            text-shadow: 0 0 5px var(--glow-color);
+        }
+
+        #toggleControlsBtn {
+            margin-top: 20px; /* Space above button */
+            margin-bottom: 0; /* No space below button initially */
+            transition: margin-bottom 0.5s ease-in-out; /* Animate margin change */
+        }
+
+        #startScreen.controls-expanded #toggleControlsBtn {
+            margin-bottom: 15px; /* Add space below button when controls are visible */
+        }
+
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.8em;
+            }
+            #startScreen {
+                padding: 20px;
+            }
         }
     </style>
 </head>
 <body>
     <div id="startScreen">
         <h1>Brick Breaker</h1>
-        <div class="controls">
+        
+        <div class="control-options">
+            <label>Player 1 Control (Single Player):</label>
+            <div class="control-options-inner">
+                <div class="control-option">
+                    <input type="radio" id="controlKeyboard" name="p1Control" value="keyboard">
+                    <label for="controlKeyboard">Keyboard</label>
+                </div>
+                <div class="control-option">
+                    <input type="radio" id="controlMouse" name="p1Control" value="mouse" checked>
+                    <label for="controlMouse">Mouse</label>
+                </div>
+            </div>
+        </div>
+        <button class="button" onclick="startGame(1)">Single Player</button>
+        <button class="button" onclick="startGame(2)">Two Players</button>
+        <button class="button" onclick="startGame(3)">AI vs. AI</button>
+
+        <button id="toggleControlsBtn" class="button">Controls Help</button>
+
+        <div class="controls">  
             <h2>Controls:</h2>
             <p><strong>Player 1 (Bottom):</strong></p>
             <ul>
@@ -119,26 +196,12 @@
             </ul>
             <p><strong>Power-ups:</strong></p>
             <ul>
-                <li>🔵 Blue Brick: Freeze Ray (Freezes opponent paddle)</li>
-                <li>🟣 Purple Brick: Wide Paddle (Increases your paddle size)</li>
-                <li>🔴 Red Brick: Laser (Destroy bricks, turn opponent to ash temporarily)</li>
+                <li> Blue Brick: Freeze Ray (Freezes opponent paddle)</li>
+                <li> Purple Brick: Wide Paddle (Increases your paddle size)</li>
+                <li> Red Brick: Laser (Destroy bricks, turn opponent to ash temporarily)</li>
             </ul>
             <p>Break all bricks for bonus points!</p>
         </div>
-        <div class="control-options">
-            <label>Player 1 Control (Single Player):</label>
-            <div class="control-option">
-                <input type="radio" id="controlKeyboard" name="p1Control" value="keyboard">
-                <label for="controlKeyboard">Keyboard</label>
-            </div>
-            <div class="control-option">
-                <input type="radio" id="controlMouse" name="p1Control" value="mouse" checked>
-                <label for="controlMouse">Mouse</label>
-            </div>
-        </div>
-        <button class="button" onclick="startGame(1)">Single Player</button>
-        <button class="button" onclick="startGame(2)">Two Players</button>
-        <button class="button" onclick="startGame(3)">AI vs. AI</button>
     </div>
 
     <script>
@@ -148,23 +211,52 @@
                 const selectedControl = document.querySelector('input[name="p1Control"]:checked').value;
                 url += `&control=${selectedControl}`;
             }
-            // Navigate to the game page, passing the mode and control method (if applicable)
             window.location.href = url;
         }
-        
-        // Ensure only one radio button is selected
+
         document.addEventListener('DOMContentLoaded', function() {
             const radioButtons = document.querySelectorAll('input[name="p1Control"]');
+            let currentlyChecked = document.querySelector('input[name="p1Control"]:checked');
+
             radioButtons.forEach(radio => {
-                radio.addEventListener('click', function() {
-                    // Uncheck all other radio buttons
-                    radioButtons.forEach(r => {
-                        if (r !== this) r.checked = false;
-                    });
-                    this.checked = true;
+                radio.addEventListener('change', function() { 
+                    if (this.checked) {
+                        currentlyChecked = this;
+                    }
                 });
+
+                const label = document.querySelector(`label[for="${radio.id}"]`);
+                if (label) {
+                    label.addEventListener('click', () => {
+                        if (!radio.checked) {
+                            radio.checked = true;
+                            const event = new Event('change');
+                            radio.dispatchEvent(event);
+                        }
+                    });
+                }
             });
+
+            const controlsDiv = document.querySelector('.controls');
+            const toggleBtn = document.getElementById('toggleControlsBtn');
+            const startScreenDiv = document.getElementById('startScreen');
+
+            if (toggleBtn && controlsDiv) {
+                toggleBtn.addEventListener('click', () => {
+                    const isVisible = controlsDiv.classList.contains('visible');
+                    if (isVisible) {
+                        controlsDiv.classList.remove('visible');
+                        toggleBtn.textContent = 'Controls Help';
+                        startScreenDiv.classList.remove('controls-expanded');
+                    } else {
+                        controlsDiv.classList.add('visible');
+                        toggleBtn.textContent = 'Hide Controls';
+                        startScreenDiv.classList.add('controls-expanded');
+                    }
+                });
+            }
         });
     </script>
+
 </body>
 </html>
