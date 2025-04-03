@@ -101,12 +101,26 @@ export class Renderer {
         if (gameState === 'paused') {
             this.ctx.fillText('Game Paused', this.canvas.width / 2, this.canvas.height / 2);
             this.ctx.font = '24px Arial';
-            this.ctx.fillText('Press ESC to resume', this.canvas.width / 2, this.canvas.height / 2 + 40);
+            this.ctx.fillText('Press P or Click Resume to continue', this.canvas.width / 2, this.canvas.height / 2 + 40);
         } else if (gameState === 'gameOver') {
             this.ctx.fillText('Game Over', this.canvas.width / 2, this.canvas.height / 2);
             this.ctx.font = '24px Arial';
             this.ctx.fillText('Press any key to restart', this.canvas.width / 2, this.canvas.height / 2 + 40);
         }
+    }
+    
+    drawPauseScreen() {
+        console.log('[Renderer] drawPauseScreen called'); // DEBUG
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; // Semi-transparent black overlay
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        this.ctx.font = '36px Arial';
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('Game Paused', this.canvas.width / 2, this.canvas.height / 2);
+        
+        this.ctx.font = '24px Arial';
+        this.ctx.fillText('Press P or Resume button to continue', this.canvas.width / 2, this.canvas.height / 2 + 40);
     }
     
     drawDebugInfo(fps, ballCount, brickCount) {

@@ -33,6 +33,10 @@ export class GameStateManager {
             this.player1Name = 'AI 1';
             this.player2Name = 'AI 2';
         }
+        
+        // Set the initial game state to playing when initialized
+        this.state = 'playing'; 
+        console.log(`[GameState Init] State set to: ${this.state}`); // DEBUG
     }
     
     update(timestamp) {
@@ -93,11 +97,16 @@ export class GameStateManager {
     }
     
     togglePause() { 
+        console.log(`[GameState] togglePause called. Current state: ${this.state}`); // DEBUG
+        // Only toggle if actually playing or already paused
         if (this.state === 'playing') {
             this.state = 'paused';
         } else if (this.state === 'paused') {
             this.state = 'playing';
         }
+        console.log(`[GameState] New state: ${this.state}`); // DEBUG
+        // Return the new state for UI updates
+        return this.state; 
     }
     
     isPlaying() {

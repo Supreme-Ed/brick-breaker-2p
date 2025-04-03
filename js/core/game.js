@@ -65,6 +65,7 @@ class Game {
         this.shootAction = this.shootAction.bind(this);
         this.shootFreezeRay = this.shootFreezeRay.bind(this);
         this.shootLaser = this.shootLaser.bind(this);
+        this.togglePause = this.togglePause.bind(this); // Bind togglePause
         
         // Initialize audio
         audioManager.init();
@@ -89,6 +90,15 @@ class Game {
         
         // Update UI
         this.updateUIButtons();
+        
+        // Get pause button element safely within init
+        this.pauseBtn = document.getElementById('pauseBtn');
+        console.log('[Game Init] Pause button found. Adding listener.'); // DEBUG
+        if (this.pauseBtn) {
+            this.pauseBtn.addEventListener('click', this.togglePause);
+        } else {
+            console.error('[Game Init] Pause button element (#pauseBtn) not found!'); // DEBUG
+        }
         
         // Start the game loop
         this.lastTime = performance.now(); // Restore lastTime initialization
@@ -143,6 +153,16 @@ class Game {
         const deltaTime = (currentTime - this.lastTime) / 1000;
         this.lastTime = currentTime;
         
+        // Check if paused before updating
+        if (this.gameState.isPaused()) {
+            // If paused, still request the next frame to keep checking
+            // but don't update game logic or draw. Optionally draw a pause overlay.
+            console.log('[Game Loop] Game is paused. Calling drawPauseScreen.'); // DEBUG
+            this.renderer.drawPauseScreen(); // Draw pause screen
+            requestAnimationFrame(this.gameLoop.bind(this));
+            return; // Skip update and draw
+        }
+        
         // Update game logic
         this.update(deltaTime); 
  
@@ -157,7 +177,17 @@ class Game {
         // Check for escape key to pause
         if (this.input.isEscapePressed()) {
             this.gameState.handleEvent({ type: 'escape' });
+            console.warn('[Game Update] Escape key pressed, toggling pause via gameState.handleEvent'); // DEBUG: Note this path is different
             return;
+        }
+        
+        // Check for pause key 'p'
+        if (this.input.isPauseKeyPressed()) {
+            console.log('[Game Update] \'P\' key detected, calling togglePause'); // DEBUG
+            this.togglePause();
+            // Check the state immediately after toggle
+            console.log(`[Game Update] State after P key toggle: ${this.gameState.state}`); // DEBUG
+            return; // Stop further updates in this frame if paused
         }
         
         // Get input state
@@ -533,6 +563,17 @@ class Game {
         return false;
     }
     
+    // Method to toggle pause state
+    togglePause() {
+        console.log('[Game] togglePause called'); // DEBUG
+        const newState = this.gameState.togglePause();
+        console.log('[Game] New state after toggle:', newState); // DEBUG
+        // Update button text based on the new state
+        if (this.pauseBtn) {
+            this.pauseBtn.textContent = newState === 'paused' ? 'Resume' : 'Pause';
+        }
+    }
+
     draw() {
         // Clear canvas
         this.renderer.clear();

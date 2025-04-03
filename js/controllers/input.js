@@ -15,7 +15,8 @@ export class InputManager {
             s: false, 
             Escape: false,
             l: false, // Cheat: Add Laser
-            f: false  // Cheat: Add FreezeRay
+            f: false, // Cheat: Add FreezeRay
+            p: false  // Added 'p' key for pause
         };
         this.isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         this.activeTouches = {};
@@ -101,6 +102,14 @@ export class InputManager {
             console.log("[Input] 's' key pressed, pending activation");
             e.preventDefault();
             return; // Early return after handling s
+        }
+        
+        // More robust P key detection
+        if (e.key === 'p' || e.key === 'P' || e.code === 'KeyP' || e.keyCode === 80) {
+            this.keys.p = true;
+            console.log("[Input] 'p' key pressed");
+            e.preventDefault();
+            return; // Early return after handling p
         }
         
         // For all other keys that we track
@@ -316,6 +325,15 @@ export class InputManager {
         }
         
         return false;
+    }
+    
+    // Check if P key was pressed for pause
+    isPauseKeyPressed() {
+        const pPressed = this.keys.p;
+        if (pPressed) {
+            this.keys.p = false; // Consume the press
+        }
+        return pPressed;
     }
     
     // For backward compatibility, though this method is no longer used
