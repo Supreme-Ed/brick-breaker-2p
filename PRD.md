@@ -210,10 +210,10 @@ Brick Breaker 2P is a web-based game that allows players to compete against each
 - Deployment Method: Continuous deployment via GitHub integration
   - Connect Netlify account to GitHub repository (`Supreme-Ed/brick-breaker-2p`)
   - Configure Netlify to build and deploy from the `main` or `refactor-modular` branch (as applicable)
-  - Build command: (Likely blank or `vite build` if needed)
-  - Publish directory: (Likely `/` or `dist` if build command is used)
+  - Build command: `npm run build` (Uses Vite to create an optimized production build)
+  - Publish directory: `dist` (Contains the output of the build process)
 - Testing: Ensure deployed version functions correctly across supported browsers and devices.
-
+- Production Build: The Vite build process (`npm run build`) automatically optimizes assets and removes `console.*` debug statements.
 ## 11. Future Enhancements
 
 ### 11.1 Planned Features

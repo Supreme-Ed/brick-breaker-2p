@@ -42,11 +42,11 @@ A two-player version of the classic Brick Breaker game with enhanced features an
    ```bash
    npm install
    ```
-3. Start a local server:
+3. Start the development server:
    ```bash
-   npx http-server -c-1
+   npm run start
    ```
-4. Open the provided URL in your browser (typically http://localhost:8080)
+4. Open the provided URL in your browser (typically http://localhost:5173)
 5. Select game mode and start playing!
 
 ## Technology
@@ -54,6 +54,7 @@ A two-player version of the classic Brick Breaker game with enhanced features an
 - Vanilla JavaScript for game logic and rendering
 - HTML5 Canvas for graphics
 - CSS for styling and UI elements
+- Vite for development server and production builds
 - Jest for unit testing
 - Playwright for end-to-end testing
 
@@ -76,10 +77,18 @@ npm run test:e2e
 
 ## Development
 
-To start a local development server:
+To start the local development server (with hot reloading):
 
 ```bash
-npx http-server -c-1
+npm run start
+```
+
+## Building for Production
+
+To create an optimized production build (outputs to `dist/` directory, removes debug logs):
+
+```bash
+npm run build
 ```
 
 ## License

@@ -24,6 +24,7 @@ This document tracks current and future development tasks for the Brick Breaker 
 - [x] Implement Pause functionality (button and 'P' key)
 - [x] Refactor UI: Add top bar for scores/controls and collapsible controls help on start screen
 - [x] Refactor mouse power-up activation (removed Y-position check)
+- [x] Configure Vite build process for production (removes debug logs, handles multiple HTML files)
 ## Future Enhancements
 
 ### High Priority
