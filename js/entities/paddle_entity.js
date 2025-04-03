@@ -29,7 +29,7 @@ class Paddle {
         this.targetX = null; // For touch/mouse control
         this.isTopPaddle = isTopPaddle;
         this.canvasWidth = canvasWidth;
-        this.speed = 8; // Base movement speed
+        this.speed = 300; // Base movement speed (Compensated for deltaTime)
         this.aiReactionTime = 0; // Timer for AI reaction delay
         this.aiReactionDelay = 0.1; // Delay in seconds before AI reacts
     }
@@ -60,7 +60,7 @@ class Paddle {
             this.updateTargetMovement();
         } else {
             // Keyboard movement
-            this.updateKeyboardMovement(keys);
+            this.updateKeyboardMovement(keys, deltaTime);
         }
         
         // Ensure paddle stays within canvas bounds
@@ -97,7 +97,7 @@ class Paddle {
         }
     }
     
-    updateKeyboardMovement(keys) {
+    updateKeyboardMovement(keys, deltaTime) {
         // Reset movement
         this.dx = 0;
         
@@ -113,7 +113,7 @@ class Paddle {
         }
         
         // Apply movement
-        this.x += this.dx;
+        this.x += this.dx * deltaTime;
     }
     
     updateTargetMovement() {
@@ -145,7 +145,7 @@ class Paddle {
         if (this.aiReactionTime < this.aiReactionDelay) {
             // Maintain current dx or slightly dampen it while waiting
              this.dx *= 0.95; 
-             this.x += this.dx;
+             this.x += this.dx * deltaTime; // Apply deltaTime during reaction delay too
              this.keepInBounds();
             return; 
         }
@@ -187,17 +187,17 @@ class Paddle {
         const randomness = (Math.random() - 0.5) * 15; // Introduce slight unpredictability
         const maxSpeed = this.speed * 0.7; // AI speed limit (slightly slower than player)
 
-        if (Math.abs(diff) > 10) { // Only adjust significantly if far from target
-            // Speed increases slightly with distance, capped by maxSpeed
-            const speedFactor = Math.min(0.2, 0.1 + Math.abs(diff) / 1000);
-            this.dx = diff * speedFactor + randomness * 0.05;
-            // Clamp speed to maxSpeed
-            this.dx = Math.max(-maxSpeed, Math.min(maxSpeed, this.dx)); 
+        const direction = Math.sign(diff);
+        const moveThreshold = 5; // Pixels distance threshold to start/stop moving
+
+        if (Math.abs(diff) > moveThreshold) {
+            // Set velocity to maxSpeed in the correct direction
+            this.dx = direction * maxSpeed;
         } else {
-            // Dampen movement when close to the target
-            this.dx *= 0.8; 
+            // Close enough to the target, stop moving
+            this.dx = 0;
         }
-        this.x += this.dx;
+        this.x += this.dx * deltaTime; // Apply deltaTime for frame-rate independence
 
         // --- AI Shooting Logic (moved to separate function, called here) ---
         this.updateAIShooting(gameManager);
