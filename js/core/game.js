@@ -420,7 +420,7 @@ class Game {
                 const isP1ShootTriggered = this.input.isMousePressed(); // This now returns true only once per click
                 
                 // Only check position if a click was actually detected
-                if (isP1ShootTriggered && mousePosition.y > this.canvas.height / 2) {
+                if (isP1ShootTriggered) { // Removed Y-position check for mouse activation
                     console.log("[Game] Player 1 mouse shoot triggered at", mousePosition.x, mousePosition.y);
                     const result = this.shootAction(1);
                     console.log("[Game] Shoot action result:", result);
