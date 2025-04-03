@@ -10,7 +10,7 @@ A two-player version of the classic Brick Breaker game with enhanced features an
   - AI vs AI: Watch two AI opponents play against each other (demonstration mode)
 - **Improved UI**:
   - Collapsible controls help section on the start screen.
-  - In-game top bar displaying scores and control buttons (Menu, Restart, Pause, Mute).
+  - In-game top bar displaying scores and control buttons (Menu, Restart, Pause).
 - **Ball Physics**: Frame-independent movement with adjustable speed and size
 - **Power-ups**:
   - Freeze ray to temporarily disable opponent's paddle
@@ -18,6 +18,7 @@ A two-player version of the classic Brick Breaker game with enhanced features an
   - Laser to destroy bricks in a straight line and temporarily turn opponent paddle to ash
 - **Pause/Resume**: Pause and resume the game using the 'P' key or the dedicated UI button.
 - **Multiple brick patterns**: Standard, Checkerboard, Diamond, Random, Zigzag
+- **Audio**: Sound effects using the Web Audio API, loaded from audio files.
 - **Scoring System**: 
   - 5 points for breaking a brick
   - 5 points for lasering a brick

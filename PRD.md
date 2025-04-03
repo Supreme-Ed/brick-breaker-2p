@@ -153,8 +153,8 @@ Brick Breaker 2P is a web-based game that allows players to compete against each
   - Power-up activation
   - Scoring
 - Audio feedback for game state changes
-- Web Audio API implementation for high-quality sound
-- Volume control and mute option
+- Web Audio API implementation for high-quality sound, loading effects from audio files
+# - Volume control and mute option (Removed)
 
 ## 8. User Interface
 
@@ -169,7 +169,7 @@ Brick Breaker 2P is a web-based game that allows players to compete against each
 ### 8.2 In-Game UI
 - **Top Bar**: Contains scores and primary game controls.
   - Score display for Player 1 and Player 2.
-  - Control Buttons: Menu, Restart, Pause/Resume, Mute.
+  - Control Buttons: Menu, Restart, Pause/Resume.
 - **Power-up Indicators**: Displayed near player paddles (implementation details may vary).
 - Minimal design focused on gameplay clarity.
 

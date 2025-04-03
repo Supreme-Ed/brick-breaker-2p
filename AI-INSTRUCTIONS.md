@@ -42,7 +42,7 @@ The AI assistant must follow these global rules for the Brick Breaker 2P project
 - Make sure git is used to commit changes both local and GitHub
 - If source code is changed, run the tests to ensure no breakage. Suggest test updates if new features are added
 - If a test fails, fix the issue and run the tests again to ensure the fix worked
-
+- When updating documentation always update PRD.md, README.md, and TASKS.md
 ## First Message Instruction
 
 The user can simply say "Follow AI instructions" at the start of any conversation to trigger these actions.

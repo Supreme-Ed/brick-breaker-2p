@@ -17,7 +17,7 @@ import { LaserBeam } from '../powerups/laserBeam.js';
 import { audioManager } from '../utils/audio.js';
 
 class Game {
-    constructor() {
+    constructor() { // Constructor cannot be async
         this.initialized = false;
 
         // Get canvas and context
@@ -73,7 +73,8 @@ class Game {
         this.toggleFullScreen = this.toggleFullScreen.bind(this); // Bind toggleFullScreen
         
         // Initialize audio
-        audioManager.init();
+        // Cannot await here. Initialization will be awaited in Game.init()
+        // audioManager.init(); // Optionally start loading early, but don't await
         
         // Get pause button element safely within init
         this.pauseBtn = document.getElementById('pauseBtn');
@@ -98,13 +99,13 @@ class Game {
         // Mark as initialized
         this.initialized = true;
         // Play start sound
-        audioManager.playGameStart();
+        // Removed playGameStart sound call
         
         // Return the game instance for chaining
         return this;
     }
     
-    init(mode, controlMethod) {
+    async init(mode, controlMethod) { // Make init async
         // Store the game mode
         this.gameMode = mode;
 
@@ -130,7 +131,16 @@ class Game {
         // Mark as initialized
         this.initialized = true;
         // Play start sound
-        audioManager.playGameStart();
+        // Removed playGameStart sound call
+        // Ensure audio is initialized (or initialization is awaited) before proceeding
+        if (!audioManager.isInitialized) {
+            console.log("[Game Init] Audio manager not initialized, calling and awaiting init...");
+            await audioManager.init(); // Await initialization here
+        } else if (audioManager.audioContext && audioManager.audioContext.state === 'suspended') {
+             // If already initialized, ensure context is running
+             console.log("[Game Init] Audio context suspended, attempting to resume...");
+             await audioManager.audioContext.resume();
+        }
         
         // Return the game instance for chaining
         return this;
@@ -381,7 +391,7 @@ class Game {
                 // this.paddle1.hasFreezeRay = false; // activateLaser should handle exclusivity if needed
                 console.log('CHEAT: Laser added to Player 1');
                 keys.l = false; // Consume the key press
-                audioManager.playPowerUp(); // Play feedback sound
+                audioManager.playSound('powerUp'); // Play feedback sound
             }
             // Restore original check for 'f' key
             if (keys.f) {
@@ -391,7 +401,7 @@ class Game {
                 // this.paddle1.hasLaser = false; // activateFreezeRay should handle exclusivity if needed
                 console.log('CHEAT: Freeze Ray added to Player 1');
                 keys.f = false; // Consume the key press
-                audioManager.playPowerUp(); // Play feedback sound
+                audioManager.playSound('powerUp'); // Play feedback sound
             }
         }
     }
@@ -559,7 +569,7 @@ class Game {
             this.freezeRays.push(newRay);
             
             // Play sound effect
-            audioManager.playFreezeRay();
+            audioManager.playSound('freezeRayShoot'); // Play freeze ray shoot sound
             console.log(`[Game] Freeze ray created and added to array. Current count: ${this.freezeRays.length}`);
             return true;
         }
@@ -586,7 +596,7 @@ class Game {
             this.laserBeams.push(newBeam);
             
             // Play sound effect
-            audioManager.playLaserShoot();
+            audioManager.playSound('laserShoot'); // Play laser shoot sound
             console.log(`[Game] Laser beam created and added to array. Current count: ${this.laserBeams.length}`);
             return true;
         }

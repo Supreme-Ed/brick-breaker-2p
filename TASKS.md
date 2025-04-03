@@ -29,7 +29,7 @@ This document tracks current and future development tasks for the Brick Breaker 
 
 ### High Priority
 - [ ] Implement basic high score list, will need python backend and will be stored in supabase
-- [ ] Rework sound system to support sound files for game sounds
+- [x] Rework sound system to support sound files for game sounds
 - [ ] Add screen size check and associated adjustments for different screen sizes and platforms
 - [ ] Add particle effects when bricks are broken
 - [ ] Implement difficulty levels for AI

@@ -27,7 +27,7 @@ export class PhysicsSystem {
             // Check for wall collisions
             const wallCollision = this.checkWallCollision(ball);
             if (wallCollision.collided) {
-                audioManager.playWallHit();
+                audioManager.playSound('wallHit');
             }
             
             // Check for paddle collisions
@@ -35,7 +35,7 @@ export class PhysicsSystem {
             const paddle2Collision = this.checkPaddleCollision(ball, paddle2, true);
             
             if (paddle1Collision || paddle2Collision) {
-                audioManager.playPaddleHit();
+                audioManager.playSound('paddleHit');
             }
             
             // Check for brick collisions
@@ -55,7 +55,7 @@ export class PhysicsSystem {
                     this.handlePowerUp(brickCollision.powerUp, ball.lastHitBy, paddle1, paddle2, audioManager);
                 }
                 
-                audioManager.playPowerUp();
+                audioManager.playSound('brickHit'); // Play brick hit sound
                 events.push({ type: 'brickBreak', brick: brickCollision.brick });
             }
             
@@ -65,12 +65,12 @@ export class PhysicsSystem {
                 if (boundaryCollision.boundary === 'top') {
                     // Ball crossed top boundary (Player 1 scores)
                     paddle1.score += 10;
-                    audioManager.playScore();
+                    // Score sound removed as requested
                     events.push({ type: 'score', scorer: 1, points: 10 });
                 } else if (boundaryCollision.boundary === 'bottom') {
                     // Ball crossed bottom boundary (Player 2 scores)
                     paddle2.score += 10;
-                    audioManager.playScore();
+                    // Score sound removed as requested
                     events.push({ type: 'score', scorer: 2, points: 10 });
                 }
                 
@@ -190,7 +190,7 @@ export class PhysicsSystem {
                 break;
         }
         
-        audioManager.playPowerUp();
+        audioManager.playSound('powerUp'); // Play power-up collected sound
     }
     
     updateFreezeRays(freezeRays, paddle1, paddle2, audioManager) {
@@ -203,7 +203,7 @@ export class PhysicsSystem {
             
             // Play sound if a target was hit
             if (hitTarget) {
-                audioManager.playFreezeRay();
+                audioManager.playSound('freezeRayHit'); // Play freeze ray hit sound
             }
             
             // Remove expired rays
@@ -232,12 +232,8 @@ export class PhysicsSystem {
                     console.log(`[DEBUG] ${paddle2.isAI ? 'AI' : 'Player 2'} scored 5 points for lasering a brick`);
                 }
                 
-                // Play brick hit sound effect
-                if (window.audioManager && typeof window.audioManager.playLaserHit === 'function') {
-                    window.audioManager.playLaserHit(); 
-                } else {
-                    console.warn('[PhysicsSystem] AudioManager or playLaserHit not found for brick hit.');
-                }
+                // Play laser hit sound effect
+                audioManager.playSound('laserHit');
             }
             
             // Check for PADDLE hit (could play a different sound here if needed)
@@ -273,6 +269,7 @@ export class PhysicsSystem {
         // Check if all bricks are cleared
         if (bricks.countActiveBricks() === 0) {
             events.push({ type: 'allBricksCleared' });
+            audioManager.playSound('levelComplete'); // Play level complete sound
         }
         
         return events;

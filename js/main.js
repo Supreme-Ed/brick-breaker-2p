@@ -21,7 +21,7 @@ window.game = game;
 window.audioManager = new AudioManager();
 
 // Function to initialize the game
-function initializeGame() {
+async function initializeGame() { // Make the function async
     debug('[DEBUG] Brick Breaker 2P initializing...'); // Use debug helper
 
     // Get mode from URL parameters
@@ -48,7 +48,7 @@ function initializeGame() {
     
     // Initialize the game
     try {
-      game.init(gameMode, controlMethod);
+      await game.init(gameMode, controlMethod); // Await the async init call
       debug("Game initialization call completed.");
     } catch (error) {
       console.error('[DEBUG] Error during game.init:', error);
