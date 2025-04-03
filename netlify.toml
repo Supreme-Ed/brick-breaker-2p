@@ -1,6 +1,4 @@
-[build]
-  publish = "."
-  command = ""
+# No build needed, just static files
 
 [[redirects]]
   from = "/*"
