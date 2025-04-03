@@ -134,7 +134,9 @@ export class AudioManager {
 
         // Ensure context is running before proceeding
         if (!this.audioContext || this.audioContext.state !== 'running') {
-             console.warn(`[DEBUG Beep] Cannot play beep, context not running. State: ${this.audioContext?.state}`);
+             // Provide a clearer warning if the context is suspended
+             const state = this.audioContext ? this.audioContext.state : 'not initialized';
+             console.warn(`[DEBUG Beep] Cannot play fallback beep because AudioContext is not running. Current state: ${state}. User interaction might be required to resume the context.`);
              return;
         }
 

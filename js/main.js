@@ -9,7 +9,10 @@ import { game } from './core/game.js';
 // Debug helper
 window.debug = function(message) {
     // Only log if not in production build
-    if (!import.meta.env.PROD) {
+    // Check if import.meta.env exists before trying to access PROD
+    if (typeof import.meta === 'undefined' ||
+        typeof import.meta.env === 'undefined' ||
+        !import.meta.env.PROD) {
         console.log(`[DEBUG] ${message}`);
     }
 };
