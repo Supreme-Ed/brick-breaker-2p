@@ -22,11 +22,12 @@ This document tracks current and future development tasks for the Brick Breaker 
 - [x] Fix Netlify deployment 404 errors with proper path configuration
 - [x] Set Mouse as default control for Single Player
 - [x] Implement Pause functionality (button and 'P' key)
+- [x] Refactor UI: Add top bar for scores/controls and collapsible controls help on start screen
 
 ## Future Enhancements
 
 ### High Priority
-- [ ] Make start screen look better
+- [ ] Further enhance start screen aesthetics (beyond collapsible controls)
 - [ ] Rework sound system to support sound files for game sounds
 - [ ] Add screen size check and associated adjustments for different screen sizes and platforms
 - [ ] Add particle effects when bricks are broken

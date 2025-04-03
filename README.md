@@ -8,6 +8,9 @@ A two-player version of the classic Brick Breaker game with enhanced features an
   - Player vs Player: Two human players compete against each other
   - Player vs AI: Play against an AI opponent with adjustable difficulty
   - AI vs AI: Watch two AI opponents play against each other (demonstration mode)
+- **Improved UI**:
+  - Collapsible controls help section on the start screen.
+  - In-game top bar displaying scores and control buttons (Menu, Restart, Pause, Mute).
 - **Ball Physics**: Frame-independent movement with adjustable speed and size
 - **Power-ups**:
   - Freeze ray to temporarily disable opponent's paddle

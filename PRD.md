@@ -163,15 +163,15 @@ Brick Breaker 2P is a web-based game that allows players to compete against each
 - Mode selection buttons (Single Player, Two Players, AI vs. AI)
 - Control method selection (keyboard/mouse)
 - Instructions and controls explanation
+- Collapsible "Controls Help" section to keep the initial view clean
 - Clean, intuitive layout
 
 ### 8.2 In-Game UI
-- Score display for both players
-- Power-up status indicators
-- Pause/Resume button
-- Return to menu button
-- Restart game button
-- Minimal design to avoid distracting from gameplay
+- **Top Bar**: Contains scores and primary game controls.
+  - Score display for Player 1 and Player 2.
+  - Control Buttons: Menu, Restart, Pause/Resume, Mute.
+- **Power-up Indicators**: Displayed near player paddles (implementation details may vary).
+- Minimal design focused on gameplay clarity.
 
 ### 8.3 Game Over Screen
 - Winner announcement
