@@ -65,7 +65,9 @@ export function createBrickParticles(brick, particles) {
         const velocityX = (Math.random() - 0.5) * 4;
         const velocityY = (Math.random() - 0.5) * 4;
         const size = Math.random() * 3 + 1;
-        particles.push(new Particle(brick.x + brick.width / 2, brick.y + brick.height / 2, brick.color, velocityX, velocityY, size));
+        const newParticle = new Particle(brick.x + brick.width / 2, brick.y + brick.height / 2, brick.color, velocityX, velocityY, size);
+        console.log(`[DEBUG] Creating particle: x=${newParticle.x.toFixed(1)}, y=${newParticle.y.toFixed(1)}, color=${newParticle.color}, size=${newParticle.size.toFixed(1)}, active=${newParticle.active}`);
+        particles.push(newParticle);
     }
 }
 

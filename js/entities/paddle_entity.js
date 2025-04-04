@@ -1,7 +1,9 @@
 /**
  * Paddle class for Brick Breaker 2P
- * Handles paddle creation, movement, and power-up effects
+ * Handles paddle creation, movement (via Matter.js body updates), and power-up effects
  */
+import { audioManager } from '../utils/audio.js'; // Import AudioManager
+import Matter from 'matter-js';
 
 /**
  * Paddle class for Brick Breaker 2P
@@ -9,12 +11,12 @@
  */
 
 class Paddle {
-    constructor(x, y, width, height, isTopPaddle = false, canvasWidth) {
-        this.x = x;
-        this.y = y;
+    constructor(matterWorld, x, y, width, height, isTopPaddle = false, canvasWidth) {
+        this.x = x; // Store for drawing reference, updated before draw
+        this.y = y; // Store for drawing reference, updated before draw
         this.width = width;
         this.height = height;
-        this.dx = 0;
+        // this.dx = 0; // dx is no longer directly used for movement calculation
         this.score = 0;
         this.curvature = 0.3;
         this.hasFreezeRay = false;
@@ -32,6 +34,20 @@ class Paddle {
         this.speed = 300; // Base movement speed (Compensated for deltaTime)
         this.aiReactionTime = 0; // Timer for AI reaction delay
         this.aiReactionDelay = 0.1; // Delay in seconds before AI reacts
+
+        // Create Matter.js body
+        const options = {
+            isStatic: true, // Paddles are moved manually, not by physics forces
+            restitution: 1.0, // Perfect bounciness
+            friction: 0.5,
+            label: 'paddle', // Identify body type in collisions
+            gameObject: this // Reference back to the Paddle instance
+        };
+        this.physicsBody = Matter.Bodies.rectangle(x + width / 2, y + height / 2, width, height, options); // Position is center-based
+
+        // Add to the world
+        Matter.World.add(matterWorld, this.physicsBody);
+        console.log(`[Paddle Constructor] Matter.js body created for ${isTopPaddle ? 'Top' : 'Bottom'} Paddle`); // DEBUG
     }
 
     /**
@@ -57,14 +73,14 @@ class Paddle {
             this.updateAI(deltaTime, balls, gameManager);
         } else if (this.targetX !== null) {
             // Mouse/touch movement
-            this.updateTargetMovement();
+            this.updateTargetMovement(deltaTime); // Pass deltaTime here
         } else {
-            // Keyboard movement
+            // Keyboard movement - Calculates newX and updates physics body
             this.updateKeyboardMovement(keys, deltaTime);
         }
         
-        // Ensure paddle stays within canvas bounds
-        this.keepInBounds();
+        // Position is now set within the movement methods after bounds check
+        // this.keepInBounds(); // keepInBounds is called within movement methods before setting position
     }
     
     updatePowerUpTimers(deltaTime) {
@@ -74,6 +90,7 @@ class Paddle {
             if (this.frozenTimeRemaining <= 0) {
                 this.isFrozen = false;
                 this.frozenTimeRemaining = 0;
+                audioManager.playSound('paddleUnfreeze'); // Play unfreeze sound
             }
         }
         
@@ -93,44 +110,46 @@ class Paddle {
             if (this.ashesTimeRemaining <= 0) {
                 this.isAshes = false;
                 this.ashesTimeRemaining = 0;
+                audioManager.playSound('paddleUnash'); // Play unash sound
             }
         }
     }
     
     updateKeyboardMovement(keys, deltaTime) {
-        // Reset movement
-        this.dx = 0;
-        
-        // Top paddle (Player 2) uses A/D
-        if (this.isTopPaddle) {
-            if (keys.a) this.dx = -this.speed;
-            if (keys.d) this.dx = this.speed;
-        } 
-        // Bottom paddle (Player 1) uses arrow keys
-        else {
-            if (keys.ArrowLeft) this.dx = -this.speed;
-            if (keys.ArrowRight) this.dx = this.speed;
+        let targetSpeed = 0;
+
+        // Determine target speed based on keys
+        if (this.isTopPaddle) { // Player 2 (A/D)
+            if (keys.a) targetSpeed = -this.speed;
+            if (keys.d) targetSpeed = this.speed;
+        } else { // Player 1 (Arrows)
+            if (keys.ArrowLeft) targetSpeed = -this.speed;
+            if (keys.ArrowRight) targetSpeed = this.speed;
         }
-        
-        // Apply movement
-        this.x += this.dx * deltaTime;
+
+        // Calculate potential new position
+        let newX = this.physicsBody.position.x + (targetSpeed * deltaTime);
+
+        // Apply bounds check *before* setting position
+        newX = this.checkBounds(newX);
+
+        // Set the Matter.js body position
+        Matter.Body.setPosition(this.physicsBody, { x: newX, y: this.physicsBody.position.y });
     }
     
-    updateTargetMovement() {
+    updateTargetMovement(deltaTime) { // Accept deltaTime
         // Move towards target X position (for mouse/touch control)
         if (this.targetX !== null) {
-            const paddleCenter = this.x + this.width / 2;
-            const distance = this.targetX - paddleCenter;
-            
-            // Only move if we're not very close to the target
-            if (Math.abs(distance) > 2) {
-                // Move at a speed proportional to distance, but capped
-                const moveSpeed = Math.min(Math.abs(distance) * 0.2, this.speed);
-                this.dx = distance > 0 ? moveSpeed : -moveSpeed;
-                this.x += this.dx;
-            } else {
-                this.dx = 0;
-            }
+            // Directly target the mouse position for less lag
+            let targetCenterX = this.targetX;
+
+            let newX = targetCenterX; // Set desired center X directly
+
+            // Apply bounds check *before* setting position
+            newX = this.checkBounds(newX);
+
+            // Set the Matter.js body position
+            Matter.Body.setPosition(this.physicsBody, { x: newX, y: this.physicsBody.position.y });
         }
     }
     
@@ -144,9 +163,10 @@ class Paddle {
         this.aiReactionTime += deltaTime;
         if (this.aiReactionTime < this.aiReactionDelay) {
             // Maintain current dx or slightly dampen it while waiting
-             this.dx *= 0.95; 
-             this.x += this.dx * deltaTime; // Apply deltaTime during reaction delay too
-             this.keepInBounds();
+             // AI doesn't move during reaction time
+             // let currentX = this.physicsBody.position.x;
+             // currentX = this.checkBounds(currentX); // Ensure it stays in bounds even if not moving
+             // Matter.Body.setPosition(this.physicsBody, { x: currentX, y: this.physicsBody.position.y });
             return; 
         }
         // Reset timer for next reaction
@@ -182,22 +202,28 @@ class Paddle {
 
         // --- Movement Calculation (from original) ---
         // Aim for the center of the paddle to intercept the ball's x position
-        const targetX = ballToTrack.x - this.width / 2;
-        const diff = targetX - this.x;
-        const randomness = (Math.random() - 0.5) * 15; // Introduce slight unpredictability
-        const maxSpeed = this.speed * 0.7; // AI speed limit (slightly slower than player)
-
-        const direction = Math.sign(diff);
+        const targetCenterX = ballToTrack.x; // AI aims for ball's center
+        const currentCenterX = this.physicsBody.position.x;
+        const diff = targetCenterX - currentCenterX;
+        // const randomness = (Math.random() - 0.5) * 15; // Add randomness later if needed
+        const maxSpeed = this.speed * 0.7; // AI speed limit
         const moveThreshold = 5; // Pixels distance threshold to start/stop moving
 
+        let moveDelta = 0;
         if (Math.abs(diff) > moveThreshold) {
-            // Set velocity to maxSpeed in the correct direction
-            this.dx = direction * maxSpeed;
-        } else {
-            // Close enough to the target, stop moving
-            this.dx = 0;
+            const direction = Math.sign(diff);
+            moveDelta = direction * maxSpeed * deltaTime; // Calculate move distance for this frame
+            // Cap movement distance per frame if needed, though deltaTime handles rate
+            // moveDelta = Math.max(-maxSpeed * deltaTime, Math.min(maxSpeed * deltaTime, moveDelta));
         }
-        this.x += this.dx * deltaTime; // Apply deltaTime for frame-rate independence
+
+        let newX = this.physicsBody.position.x + moveDelta;
+
+        // Apply bounds check *before* setting position
+        newX = this.checkBounds(newX);
+
+        // Set the Matter.js body position
+        Matter.Body.setPosition(this.physicsBody, { x: newX, y: this.physicsBody.position.y });
 
         // --- AI Shooting Logic (moved to separate function, called here) ---
         this.updateAIShooting(gameManager);
@@ -254,25 +280,34 @@ class Paddle {
         }
     }
     
-    keepInBounds() {
-        // Ensure paddle stays within canvas bounds
-        if (this.x < 0) {
-            this.x = 0;
-            this.dx = 0;
-        } else if (this.x + this.width > this.canvasWidth) {
-            this.x = this.canvasWidth - this.width;
-            this.dx = 0;
+    // Renamed keepInBounds to checkBounds and returns the corrected position
+    checkBounds(proposedX) {
+        // Ensure paddle stays within canvas bounds, considering center position
+        const halfWidth = this.width / 2;
+        const minX = halfWidth; // Minimum center position
+        const maxX = this.canvasWidth - halfWidth; // Maximum center position
+
+        if (proposedX < minX) {
+            return minX;
+        } else if (proposedX > maxX) {
+            return maxX;
         }
+        return proposedX; // Position is valid
     }
     
     draw(ctx) {
+        // Update internal x, y from physics body before drawing
+        // Position is center-based, adjust for top-left corner drawing
+        this.x = this.physicsBody.position.x - this.width / 2;
+        this.y = this.physicsBody.position.y - this.height / 2;
+
         if (this.isAshes) {
             // Draw ashes effect instead of making paddle invisible
             this.drawAshesEffect(ctx);
             return;
         }
-        
-        // Draw paddle shadow
+
+        // Draw paddle shadow (using updated this.x, this.y)
         ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
         ctx.fillRect(this.x + 3, this.y + 3, this.width, this.height);
         
@@ -423,13 +458,13 @@ class Paddle {
 }
 
 // Factory function to create paddles
-function createPaddle(isTopPaddle, canvasWidth, canvasHeight) {
+function createPaddle(matterWorld, isTopPaddle, canvasWidth, canvasHeight) {
     const paddleWidth = 100;
     const paddleHeight = 10;
-    const paddleX = (canvasWidth - paddleWidth) / 2;
-    const paddleY = isTopPaddle ? 30 : canvasHeight - 30;
-    
-    return new Paddle(paddleX, paddleY, paddleWidth, paddleHeight, isTopPaddle, canvasWidth);
+    const paddleX = (canvasWidth - paddleWidth) / 2; // Initial top-left X
+    const paddleY = isTopPaddle ? 30 : canvasHeight - 40; // Adjusted Y position slightly
+
+    return new Paddle(matterWorld, paddleX, paddleY, paddleWidth, paddleHeight, isTopPaddle, canvasWidth);
 }
 
 // Revert to ES Module export only

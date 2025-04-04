@@ -6,7 +6,7 @@
 This document outlines the requirements and specifications for Brick Breaker 2P, a modern multiplayer reimagining of the classic brick breaker arcade game. The game features two-player competitive gameplay, power-ups, multiple control methods, and AI opponents.
 
 ### 1.2 Product Overview
-Brick Breaker 2P is a web-based game that allows players to compete against each other or AI opponents in a vertically mirrored playing field. Each player controls a paddle and attempts to break bricks while preventing balls from crossing their boundary. The game includes various power-ups, multiple brick patterns, and different control schemes to accommodate player preferences.
+Brick Breaker 2P is a web-based game that allows players to compete against each other or AI opponents in a vertically mirrored playing field. Each player controls a paddle and attempts to break bricks while preventing balls from crossing their boundary. The game includes various power-ups, multiple brick patterns, and different control schemes to accommodate player preferences. It utilizes the Matter.js physics engine for realistic interactions.
 
 ### 1.3 Target Audience
 - Casual gamers looking for quick, engaging gameplay sessions
@@ -51,16 +51,22 @@ Brick Breaker 2P is a web-based game that allows players to compete against each
 **Future Enhancement:** Implement a configurable win condition where players can set a target score (e.g., first to reach 10, 20, or 50 points) or a time limit for matches.
 
 ### 3.3 Ball Physics
-- Frame-independent movement using deltaTime for consistent experience across devices
-- Realistic bounce physics with angle calculations based on paddle impact point
-- Multiple balls in play simultaneously (one owned by each player)
-- Ball speed increases gradually during extended rallies
+- Utilizes the **Matter.js physics engine** for collision detection and response.
+- Frame-independent movement via Matter.js engine updates.
+- Realistic bounce physics based on Matter.js properties (restitution, friction).
+- Multiple balls in play simultaneously (one owned by each player).
+- Ball speed is **enforced to remain constant** throughout gameplay (no gradual increase).
 
 ### 3.4 Paddle Mechanics
-- Paddles can move horizontally only
-- Paddle curvature affects ball bounce direction
-- Paddle movement speed is balanced for fair gameplay
-- Paddle size can be affected by power-ups
+- Paddles can move horizontally only.
+- Paddle physics body interacts with the ball via Matter.js.
+- Paddle movement speed is balanced for fair gameplay.
+- Paddle size can be affected by power-ups (visual size currently; physics size needs update for Wide Paddle).
+
+### 3.5 Brick Mechanics
+- Bricks are static bodies in the physics simulation.
+- Upon collision with a ball, the brick's physics body is removed.
+- **Brick Fragmentation:** When broken, bricks visually disappear and generate small fragment physics bodies that fly outwards.
 
 ## 4. Control Schemes
 
@@ -96,11 +102,12 @@ Brick Breaker 2P is a web-based game that allows players to compete against each
 - Sound effect indicates activation and deactivation
 
 ### 5.2 Wide Paddle
-- Temporarily increases paddle width
+- Temporarily increases paddle width **visually**.
 - Activated by breaking purple power-up bricks
 - Duration: 15 seconds
 - Visual effect shows enlarged paddle
 - Gradual transition between normal and wide states
+- **TODO:** Update physics body size when power-up is active/expires.
 
 ### 5.3 Laser Power-Up
 - Allows player to shoot a laser beam that turns opponent to ashes
@@ -141,6 +148,7 @@ Brick Breaker 2P is a web-based game that allows players to compete against each
 ### 7.1 Visual Elements
 - Clean, modern UI with high contrast for gameplay elements
 - Particle effects for brick breaking and power-up activation
+- **Brick fragmentation effect** upon breaking.
 - Visual indicators for power-up status
 - Smooth animations for all game elements
 - Responsive design that works across different screen sizes
@@ -151,7 +159,7 @@ Brick Breaker 2P is a web-based game that allows players to compete against each
   - Wall collisions
   - Brick breaking
   - Power-up activation
-  - Scoring
+  - Scoring (Currently missing 'score' sound file)
 - Audio feedback for game state changes
 - Web Audio API implementation for high-quality sound, loading effects from audio files
 # - Volume control and mute option (Removed)
@@ -189,7 +197,7 @@ Brick Breaker 2P is a web-based game that allows players to compete against each
 
 ### 9.2 Performance Requirements
 - Consistent 60 FPS gameplay
-- Frame-independent physics
+- Frame-independent physics via Matter.js
 - Low latency input handling
 - Efficient rendering for smooth animations
 
@@ -199,7 +207,7 @@ Brick Breaker 2P is a web-based game that allows players to compete against each
   - Game state management
   - Rendering
   - Input handling
-  - Physics calculations
+  - Physics calculations (**Matter.js**)
   - Audio management
 - Use of modern JavaScript features (ES Modules, classes)
 - Version control with Git

@@ -1,14 +1,18 @@
 /**
  * Brick management for Brick Breaker 2P
- * Handles brick creation, patterns, and collision detection
+ * Handles brick creation, patterns, and managing Matter.js bodies for bricks.
  */
+
+import Matter from 'matter-js';
 
 export class BrickManager {
     /**
+     * @param {Matter.World} matterWorld - The Matter.js world instance
      * @param {number} canvasWidth
      * @param {number} canvasHeight
      */
-    constructor(canvasWidth, canvasHeight) {
+    constructor(matterWorld, canvasWidth, canvasHeight) {
+        this.matterWorld = matterWorld; // Store Matter.js world reference
         this.canvasWidth = canvasWidth;
         this.canvasHeight = canvasHeight;
         this.rows = 6;
@@ -34,15 +38,31 @@ export class BrickManager {
     }
 
     /**
-     * Initialize the brick grid
+     * Initialize the brick grid, removing old physics bodies first.
      */
     initGrid() {
-        // Initialize empty grid
+        // Remove existing physics bodies from the world before creating new ones
+        if (this.grid && this.grid.length > 0) {
+            console.log("[BrickManager] Clearing old brick physics bodies..."); // DEBUG
+            for (let c = 0; c < this.columns; c++) {
+                for (let r = 0; r < this.rows; r++) {
+                    if (this.grid[c][r] && this.grid[c][r].physicsBody) {
+                        Matter.World.remove(this.matterWorld, this.grid[c][r].physicsBody);
+                    }
+                }
+            }
+            console.log("[BrickManager] Old brick physics bodies cleared."); // DEBUG
+        }
+
+        // Initialize empty grid structure
         this.grid = [];
         for (let c = 0; c < this.columns; c++) {
             this.grid[c] = [];
             for (let r = 0; r < this.rows; r++) {
+                // Add column and row indices to the brick data object itself
                 this.grid[c][r] = {
+                    c: c, // Store column index
+                    r: r, // Store row index
                     x: 0,
                     y: 0,
                     width: this.brickWidth,
@@ -50,6 +70,7 @@ export class BrickManager {
                     status: 0,
                     color: "#3498db",
                     powerUp: null,
+                    physicsBody: null,
                     animation: {
                         active: false,
                         progress: 0,
@@ -98,20 +119,51 @@ export class BrickManager {
         // Add power-up bricks
         this.addPowerUpBricks();
         
-        // Calculate positions for all bricks
-        this.updateBrickPositions();
+        // Calculate positions and create physics bodies
+        this.updateBrickPositionsAndBodies();
     }
 
     /**
-     * Update the positions of all bricks in the grid
+     * Update the positions of all bricks in the grid and create/update their physics bodies.
      */
-    updateBrickPositions() {
+    updateBrickPositionsAndBodies() {
+        console.log("[BrickManager] Updating brick positions and creating physics bodies..."); // DEBUG
+        const brickOptions = {
+            isStatic: true,
+            restitution: 0.8, // Bricks should have some bounce
+            friction: 0.1,
+            label: 'brick' // Identify body type in collisions
+            // gameObject will be set individually below
+        };
+
         for (let c = 0; c < this.columns; c++) {
             for (let r = 0; r < this.rows; r++) {
-                this.grid[c][r].x = (c * (this.brickWidth + this.padding)) + this.offsetLeft;
-                this.grid[c][r].y = (r * (this.brickHeight + this.padding)) + this.offsetTop;
+                const brick = this.grid[c][r];
+                brick.x = (c * (this.brickWidth + this.padding)) + this.offsetLeft;
+                brick.y = (r * (this.brickHeight + this.padding)) + this.offsetTop;
+
+                // Remove existing body if it exists (e.g., during pattern change)
+                if (brick.physicsBody) {
+                    Matter.World.remove(this.matterWorld, brick.physicsBody);
+                    brick.physicsBody = null;
+                }
+
+                // Create new physics body only if the brick is active
+                if (brick.status === 1) {
+                    const bodyX = brick.x + brick.width / 2; // Center X
+                    const bodyY = brick.y + brick.height / 2; // Center Y
+                    const newBody = Matter.Bodies.rectangle(bodyX, bodyY, brick.width, brick.height, {
+                        ...brickOptions, // Spread common options
+                        // Assign direct reference to the grid object
+                        gameObject: brick
+                    });
+                    brick.physicsBody = newBody; // Assign the created body
+                    console.log(`[BrickManager] Assigned physicsBody (ID: ${newBody.id}) to brick [${c},${r}]`); // DETAILED LOG
+                    Matter.World.add(this.matterWorld, newBody); // *** ADD BODY TO WORLD ***
+                }
             }
         }
+        console.log("[BrickManager] Brick positions and physics bodies updated."); // DEBUG
     }
 
     /**
@@ -434,76 +486,16 @@ export class BrickManager {
         return `rgb(${r}, ${g}, ${b})`;
     }
 
-    /**
-     * Check for collision between a ball and the brick grid
-     * @param {Ball} ball
-     * @returns {{ hit: boolean, brick?: object, column?: number, row?: number, powerUp?: string | null }}
-     */
-    checkCollision(ball) {
-        for (let c = 0; c < this.columns; c++) {
-            for (let r = 0; r < this.rows; r++) {
-                const brick = this.grid[c][r];
-                if (brick.status === 1) {
-                    // Check if ball is colliding with this brick
-                    if (ball.x + ball.radius > brick.x && 
-                        ball.x - ball.radius < brick.x + brick.width && 
-                        ball.y + ball.radius > brick.y && 
-                        ball.y - ball.radius < brick.y + brick.height) {
-                        
-                        // Determine collision side (top/bottom/left/right)
-                        const ballCenterX = ball.x;
-                        const ballCenterY = ball.y;
-                        const brickCenterX = brick.x + brick.width / 2;
-                        const brickCenterY = brick.y + brick.height / 2;
-                        
-                        // Calculate distances from ball center to brick center
-                        const dx = Math.abs(ballCenterX - brickCenterX);
-                        const dy = Math.abs(ballCenterY - brickCenterY);
-                        
-                        // Calculate the minimum distance needed for collision on each axis
-                        const minDistX = brick.width / 2 + ball.radius;
-                        const minDistY = brick.height / 2 + ball.radius;
-                        
-                        // Calculate overlap on each axis
-                        const overlapX = minDistX - dx;
-                        const overlapY = minDistY - dy;
-                        
-                        // Determine which side was hit based on overlap
-                        if (overlapX < overlapY) {
-                            // Horizontal collision (left or right)
-                            ball.dx = -ball.dx;
-                        } else {
-                            // Vertical collision (top or bottom)
-                            ball.dy = -ball.dy;
-                        }
-                        
-                        // Mark brick as hit
-                        brick.status = 0;
-                        
-                        // Return collision result with brick info
-                        return {
-                            hit: true,
-                            brick: brick,
-                            column: c,
-                            row: r,
-                            powerUp: brick.powerUp
-                        };
-                    }
-                }
-            }
-        }
-        
-        // No collision
-        return { hit: false };
-    }
+    // Removed checkCollision method - Collisions are now handled by Matter.js events in Game.js
 }
 
 /**
  * Export a factory function to create the brick manager
+ * @param {Matter.World} matterWorld - The Matter.js world instance
  * @param {number} canvasWidth
  * @param {number} canvasHeight
  * @returns {BrickManager}
  */
-export function createBrickManager(canvasWidth, canvasHeight) {
-    return new BrickManager(canvasWidth, canvasHeight);
+export function createBrickManager(matterWorld, canvasWidth, canvasHeight) {
+    return new BrickManager(matterWorld, canvasWidth, canvasHeight);
 }

@@ -1,152 +1,114 @@
 /**
  * Ball class for Brick Breaker 2P
- * Handles ball physics, movement, and collision detection
+ * Handles ball physics (via Matter.js), movement, and collision detection (via Matter.js events)
  */
+
+import Matter from 'matter-js';
 
 export class Ball {
     /**
-     * @param {number} x
-     * @param {number} y
+     * @param {Matter.World} matterWorld - The Matter.js world instance
+     * @param {number} x - Initial x position
+     * @param {number} y - Initial y position
      * @param {number} radius
-     * @param {number} dx
-     * @param {number} dy
      * @param {number} owner - 1 for player 1, 2 for player 2
-     * @param {number} canvasWidth
-     * @param {number} canvasHeight
      */
-    constructor(x, y, radius, dx, dy, owner, canvasWidth, canvasHeight) {
-        this.x = x;
-        this.y = y;
-        this.radius = radius;
-        this.dx = dx;
-        this.dy = dy;
-        this.owner = owner; // 1 for player 1, 2 for player 2
-        this.lastHitBy = owner;
-        this.canvasWidth = canvasWidth;
-        this.canvasHeight = canvasHeight;
-        this.baseSpeed = 200; // Adjusted for appropriate on-screen speed
-        this.maxSpeed = 350;  // Adjusted for appropriate on-screen speed
-    }
+        constructor(matterWorld, x, y, radius, owner) {
+            this.x = x; // Still store for drawing reference, updated before draw
+            this.y = y; // Still store for drawing reference, updated before draw
+            this.radius = radius;
+            this.owner = owner; // 1 for player 1, 2 for player 2
+            this.lastHitBy = owner;
+            this.baseSpeed = 75; // Reduced base speed further
+            this.maxSpeed = 350;  // Max speed (can be enforced via Matter.js if needed)
+
+            // Create Matter.js body
+            const options = {
+                restitution: 1.0, // Perfect bounciness (like walls)
+                friction: 0,      // No friction
+                frictionAir: 0,   // No air resistance
+                density: 0.001,
+                label: 'ball', // Identify body type in collisions
+                gameObject: this // Reference back to the Ball instance
+            };
+            this.physicsBody = Matter.Bodies.circle(x, y, radius, options);
+
+            // Add to the world
+            Matter.World.add(matterWorld, this.physicsBody);
+            console.log(`[Ball Constructor] Matter.js body created for owner ${owner} at (${x}, ${y})`); // DEBUG
+        }
 
     /**
      * @param {number} deltaTime
      */
     update(deltaTime) {
-        // Move the ball - using deltaTime for frame-independent movement
-        this.x += this.dx * deltaTime;
-        this.y += this.dy * deltaTime;
+        // Movement and wall collisions are now handled by the Matter.js engine.
+        // Speed capping logic removed, relying on enforceConstantBallSpeed in Game.js for now.
+    }
 
-        // Check for wall collisions
-        this.checkWallCollision();
-    }
-    
-    checkWallCollision() {
-        // Left and right walls
-        if (this.x - this.radius < 0) {
-            this.x = this.radius;
-            this.dx = Math.abs(this.dx);
-            return { wall: 'left' };
-        } else if (this.x + this.radius > this.canvasWidth) {
-            this.x = this.canvasWidth - this.radius;
-            this.dx = -Math.abs(this.dx);
-            return { wall: 'right' };
-        }
-        
-        // No collision
-        return { wall: null };
-    }
-    
-    /**
-     * @param {Paddle} paddle
-     * @param {boolean} isTopPaddle
-     * @returns {boolean}
-     */
-    checkPaddleCollision(paddle, isTopPaddle) {
-        // Skip if paddle is turned to ashes
-        if (paddle.isAshes) return false;
-        
-        // Check if ball is colliding with paddle
-        if (this.x + this.radius > paddle.x && 
-            this.x - this.radius < paddle.x + paddle.width && 
-            ((isTopPaddle && this.y - this.radius < paddle.y + paddle.height && this.y > paddle.y) || 
-             (!isTopPaddle && this.y + this.radius > paddle.y && this.y < paddle.y + paddle.height))) {
-            
-            // Calculate impact point on paddle (0 to 1)
-            const impactPoint = (this.x - paddle.x) / paddle.width;
-            
-            // Calculate bounce angle based on impact point
-            // Center = straight, edges = angled
-            const maxBounceAngle = Math.PI / 3; // 60 degrees
-            const bounceAngle = (impactPoint * 2 - 1) * maxBounceAngle * paddle.curvature;
-            
-            // Set new velocity based on bounce angle
-            const speed = Math.sqrt(this.dx * this.dx + this.dy * this.dy);
-            const direction = isTopPaddle ? 1 : -1; // Down for top paddle, up for bottom paddle
-            
-            this.dx = Math.sin(bounceAngle) * speed;
-            this.dy = Math.cos(bounceAngle) * speed * direction;
-            
-            // Ensure ball is outside paddle to prevent multiple collisions
-            if (isTopPaddle) {
-                this.y = paddle.y + paddle.height + this.radius;
-            } else {
-                this.y = paddle.y - this.radius;
-            }
-            
-            // Update last hit by
-            this.lastHitBy = isTopPaddle ? 2 : 1;
-            
-            return true;
-        }
-        
-        return false;
-    }
-    
-    checkBoundaryCollision() {
-        // Check if ball crossed top or bottom boundary
-        if (this.y - this.radius < 0) {
-            // Ball crossed top boundary (Player 1 scores)
-            return { boundary: 'top', scorer: 1 };
-        } else if (this.y + this.radius > this.canvasHeight) {
-            // Ball crossed bottom boundary (Player 2 scores)
-            return { boundary: 'bottom', scorer: 2 };
-        }
-        
-        // No boundary crossed
-        return { boundary: null, scorer: null };
-    }
-    
+    // Removed checkWallCollision - Handled by Matter.js engine and static wall bodies.
+    // Removed checkPaddleCollision - Handled by Matter.js collision events.
+    // Removed checkBoundaryCollision - Handled by Matter.js collision events (or sensors if needed).
+
     /**
      * @param {number} owner - 1 for player 1, 2 for player 2
+     * @param {number} canvasWidth - Needed to calculate reset position
+     * @param {number} canvasHeight - Needed to calculate reset position
      */
-    reset(owner) {
-        // Reset ball position and direction
-        if (owner === 1) {
-            // Player 1's ball (bottom)
-            this.x = this.canvasWidth / 2;
-            this.y = this.canvasHeight - 50;
-            this.dx = (Math.random() * 0.8 - 0.4) * this.baseSpeed; // Adjusted for better initial angle
-            this.dy = -this.baseSpeed * 0.6; // Adjusted for better initial speed
-        } else {
-            // Player 2's ball (top)
-            this.x = this.canvasWidth / 2;
-            this.y = 50;
-            this.dx = (Math.random() * 0.8 - 0.4) * this.baseSpeed; // Adjusted for better initial angle
-            this.dy = this.baseSpeed * 0.6; // Adjusted for better initial speed
-        }
-        
+    reset(owner, canvasWidth, canvasHeight) {
         this.owner = owner;
         this.lastHitBy = owner;
+
+        let resetX, resetY, resetDX, resetDY;
+        // Calculate reset position and velocity based on owner
+        // Note: Matter.js velocity is pixels per step (roughly 1/60th sec), not pixels per second.
+        // We need to scale baseSpeed accordingly. A common factor is ~1/16.66 or similar. Let's adjust.
+        const matterSpeedScale = 1 / (1000 / 60); // Approximation for deltaTime scaling
+
+        if (owner === 1) { // Player 1 (bottom)
+            resetX = canvasWidth / 2;
+            resetY = canvasHeight - 50;
+            resetDX = (Math.random() * 0.8 - 0.4) * this.baseSpeed * matterSpeedScale;
+            resetDY = -this.baseSpeed * 0.6 * matterSpeedScale;
+        } else { // Player 2 (top)
+            resetX = canvasWidth / 2;
+            resetY = 50;
+            resetDX = (Math.random() * 0.8 - 0.4) * this.baseSpeed * matterSpeedScale;
+            resetDY = this.baseSpeed * 0.6 * matterSpeedScale;
+        }
+
+        // Set position and velocity using Matter.js functions
+        // Ensure physicsBody exists before trying to set properties
+        if (this.physicsBody) {
+            Matter.Body.setPosition(this.physicsBody, { x: resetX, y: resetY });
+            Matter.Body.setVelocity(this.physicsBody, { x: resetDX, y: resetDY });
+            // Ensure angular velocity is zeroed out on reset
+            Matter.Body.setAngularVelocity(this.physicsBody, 0);
+            console.log(`[Ball Reset] Owner ${owner} reset to (${resetX.toFixed(1)}, ${resetY.toFixed(1)}) vel (${resetDX.toFixed(2)}, ${resetDY.toFixed(2)})`); // DEBUG
+        } else {
+            console.error(`[Ball Reset] Attempted to reset ball for owner ${owner} but physicsBody is missing.`);
+        }
     }
-    
+
     /**
      * @param {CanvasRenderingContext2D} ctx
      */
     draw(ctx) {
+        // Ensure physicsBody exists before drawing
+        if (!this.physicsBody) {
+             console.error(`[Ball.draw] Cannot draw ball for owner ${this.owner}, physicsBody is missing.`);
+             return;
+        }
+        // Update internal x, y from physics body before drawing
+        this.x = this.physicsBody.position.x;
+        this.y = this.physicsBody.position.y;
+
         // Safeguard against non-finite coordinates causing crash
         if (!isFinite(this.x) || !isFinite(this.y) || !isFinite(this.radius)) {
-            console.error(`[Ball.draw] Invalid coordinates or radius: x=${this.x}, y=${this.y}, radius=${this.radius}. Skipping draw.`);
-            return; // Don't attempt to draw if values are invalid
+            console.error(`[Ball.draw] Invalid physics body position: x=${this.x}, y=${this.y}. Skipping draw.`);
+            // Attempt to reset the ball if position becomes invalid? Or just skip draw.
+            // For now, just skip drawing. Consider adding recovery logic if this happens frequently.
+            return;
         }
 
         // Draw ball with gradient and shadow
@@ -154,7 +116,7 @@ export class Ball {
             this.x, this.y, 0,
             this.x, this.y, this.radius
         );
-        
+
         // Set gradient colors based on last hit
         if (this.lastHitBy === 1) {
             gradient.addColorStop(0, '#ffffff');
@@ -163,21 +125,21 @@ export class Ball {
             gradient.addColorStop(0, '#ffffff');
             gradient.addColorStop(1, '#3498db'); // Blue for player 2
         }
-        
+
         // Draw shadow
         ctx.beginPath();
         ctx.arc(this.x + 2, this.y + 2, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.fill();
         ctx.closePath();
-        
+
         // Draw ball
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = gradient;
         ctx.fill();
         ctx.closePath();
-        
+
         // Add highlight
         ctx.beginPath();
         ctx.arc(this.x - this.radius * 0.3, this.y - this.radius * 0.3, this.radius * 0.2, 0, Math.PI * 2);
@@ -188,30 +150,46 @@ export class Ball {
 }
 
 /**
- * Factory function to create balls
- * @param {number} owner
+ * Factory function to create balls and integrate them with Matter.js
+ * @param {Matter.World} matterWorld - The Matter.js world instance
+ * @param {number} owner - 1 for player 1, 2 for player 2
  * @param {number} canvasWidth
  * @param {number} canvasHeight
- * @returns {Ball}
+ * @returns {Ball} The created Ball instance
  */
-export function createBall(owner, canvasWidth, canvasHeight) {
+export function createBall(matterWorld, owner, canvasWidth, canvasHeight) {
     const radius = 8;
-    let x, y, dx, dy;
-    const baseSpeed = 200; // Adjusted for appropriate on-screen speed
-    
-    if (owner === 1) {
-        // Player 1's ball (bottom)
+    let x, y, initialDX, initialDY;
+    const baseSpeed = 75; // Reduced base speed further
+    const matterSpeedScale = 1 / (1000 / 60); // Scale factor for Matter.js velocity (pixels/step)
+
+    // Determine initial position
+    if (owner === 1) { // Player 1 (bottom)
         x = canvasWidth / 2;
         y = canvasHeight - 50;
-        dx = (Math.random() * 0.8 - 0.4) * baseSpeed;
-        dy = -baseSpeed * 0.6;
-    } else {
-        // Player 2's ball (top)
+    } else { // Player 2 (top)
         x = canvasWidth / 2;
         y = 50;
-        dx = (Math.random() * 0.8 - 0.4) * baseSpeed;
-        dy = baseSpeed * 0.6;
     }
-    
-    return new Ball(x, y, radius, dx, dy, owner, canvasWidth, canvasHeight);
+
+    // Create the Ball instance (which creates the Matter body)
+    const ball = new Ball(matterWorld, x, y, radius, owner);
+
+    // Determine and set initial velocity using Matter.js
+    if (owner === 1) {
+        initialDX = (Math.random() * 0.8 - 0.4) * baseSpeed * matterSpeedScale;
+        initialDY = -baseSpeed * 0.6 * matterSpeedScale;
+    } else {
+        initialDX = (Math.random() * 0.8 - 0.4) * baseSpeed * matterSpeedScale;
+        initialDY = baseSpeed * 0.6 * matterSpeedScale;
+    }
+    // Ensure physicsBody exists before setting velocity
+    if (ball.physicsBody) {
+        Matter.Body.setVelocity(ball.physicsBody, { x: initialDX, y: initialDY });
+        console.log(`[createBall] Ball created for owner ${owner}, initial vel (${initialDX.toFixed(2)}, ${initialDY.toFixed(2)})`); // DEBUG
+    } else {
+         console.error(`[createBall] Failed to set initial velocity for owner ${owner}, physicsBody is missing.`);
+    }
+
+    return ball;
 }

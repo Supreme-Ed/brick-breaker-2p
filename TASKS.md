@@ -4,6 +4,8 @@ This document tracks current and future development tasks for the Brick Breaker 
 
 ## Current Tasks
 
+- [ ] Fix Wide Paddle power-up physics boundary (doesn't match visual size)
+- [ ] Add 'score' sound effect file and integrate with audio manager
 - [ ] Perform security audit
 - [ ] Fix TypeScript "possibly null" warnings in JavaScript files
 - [ ] Implement configurable win conditions (score limit or time limit)
@@ -25,16 +27,21 @@ This document tracks current and future development tasks for the Brick Breaker 
 - [x] Refactor UI: Add top bar for scores/controls and collapsible controls help on start screen
 - [x] Refactor mouse power-up activation (removed Y-position check)
 - [x] Configure Vite build process for production (removes debug logs, handles multiple HTML files)
+- [x] Rework sound system to support sound files for game sounds
+- [x] Fix audio system initialization issues after sound file rework (see DEBUG-AudioFix.md)
+- [x] Integrate Matter.js for core physics and brick fragmentation (see DEBUG-MatterJS_Integration.md)
+- [x] Add particle effects when bricks are broken (via Matter.js fragmentation)
+
 ## Future Enhancements
 
 ### High Priority
 - [ ] Implement basic high score list, will need python backend and will be stored in supabase
-- [x] Rework sound system to support sound files for game sounds
 - [ ] Add screen size check and associated adjustments for different screen sizes and platforms
-- [ ] Add particle effects when bricks are broken
 - [ ] Implement difficulty levels for AI
-- [ ] Add visual effects for power-ups and brick destruction
+- [ ] Add visual effects for power-ups (beyond basic indicators/fragmentation)
 - [ ] Create a proper game over screen
+- [ ] Optimize sound files and convert to MP3, optimize loading/loading progress bar
+
 
 ### Medium Priority
 - [ ] Add support for Bluetooth controllers
@@ -59,6 +66,9 @@ This document tracks current and future development tasks for the Brick Breaker 
 - [x] Fix any touch control issues on mobile devices (coordinate scaling)
 - [x] Restore missing glow effect on game canvas
 - [x] Fix audio system initialization issues after sound file rework (see DEBUG-AudioFix.md)
+- [x] Fix brick breaking / ghost collision issues after Matter.js integration
+- [x] Fix ball slowdown issues after Matter.js integration
+- [x] Fix various JS errors during Matter.js integration (`matterWorld is not defined`, `deltaTime is not defined`, `this.gameState.pauseGame is not a function`, `Matter.World.get is not a function`, `ball is not defined`)
 
 ## Notes
 

@@ -76,6 +76,7 @@ export class Renderer {
         // Draw all active particles
         particles.forEach(particle => {
             if (particle.active) {
+                console.log(`[DEBUG] Drawing particle: x=${particle.x.toFixed(1)}, y=${particle.y.toFixed(1)}, alpha=${particle.alpha.toFixed(2)}, size=${particle.size.toFixed(1)}`);
                 particle.draw(this.ctx);
             }
         });
@@ -99,7 +100,7 @@ export class Renderer {
     }
     
     drawPauseScreen() {
-        console.log('[Renderer] drawPauseScreen called'); // DEBUG
+        // console.log('[Renderer] drawPauseScreen called'); // DEBUG - Removed repeating log
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; // Semi-transparent black overlay
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         

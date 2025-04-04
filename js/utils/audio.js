@@ -5,18 +5,18 @@
 
 // Define the mapping of sound names to their file paths
 const SOUND_FILES = {
-    paddleHit: 'assets/audio/hit.wav',
-    wallHit: 'assets/audio/wall.wav',
-    brickHit: 'assets/audio/brick_hit.wav',
-    powerUp: 'assets/audio/power_up.wav', // Corrected filename
-    laserShoot: 'assets/audio/laser_shoot.wav',
-    laserHit: 'assets/audio/laser_hit.wav',
-    freezeRayShoot: 'assets/audio/freeze_shoot.wav',
-    freezeRayHit: 'assets/audio/freeze_hit.wav',
+    paddleHit: 'assets/audio/hit.mp3',
+    wallHit: 'assets/audio/wall.mp3',
+    brickHit: 'assets/audio/brick_hit.mp3',
+    powerUp: 'assets/audio/power_up.mp3', // Corrected filename
+    laserShoot: 'assets/audio/laser_shoot.mp3',
+    laserHit: 'assets/audio/laser_hit.mp3',
+    freezeRayShoot: 'assets/audio/freeze_shoot.mp3',
+    freezeRayHit: 'assets/audio/freeze_hit.mp3',
     // levelComplete: 'assets/audio/complete.wav', // Removed - File does not exist
-    uiClick: 'assets/audio/click.wav', // Corrected extension
-    paddleUnfreeze: 'assets/audio/paddle_unfreeze.wav', // Added unfreeze sound
-    paddleUnash: 'assets/audio/paddle_unash.wav' // Added unash sound
+    uiClick: 'assets/audio/click.mp3', // Corrected extension
+    paddleUnfreeze: 'assets/audio/paddle_unfreeze.mp3', // Added unfreeze sound
+    paddleUnash: 'assets/audio/paddle_unash.mp3' // Added unash sound
     // Add other sounds here if needed
 };
 

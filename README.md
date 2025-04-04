@@ -1,6 +1,6 @@
 # Brick Breaker 2P
 
-A two-player version of the classic Brick Breaker game with enhanced features and touch screen controls.
+A two-player version of the classic Brick Breaker game with enhanced features and touch screen controls, now featuring physics powered by Matter.js!
 
 ## Features
 
@@ -11,26 +11,27 @@ A two-player version of the classic Brick Breaker game with enhanced features an
 - **Improved UI**:
   - Collapsible controls help section on the start screen.
   - In-game top bar displaying scores and control buttons (Menu, Restart, Pause).
-- **Ball Physics**: Frame-independent movement with adjustable speed and size
+- **Ball Physics**: Utilizes **Matter.js** for collision detection and response. Ball speed is enforced to remain constant.
+- **Brick Fragmentation**: Bricks break apart into fragments upon collision.
 - **Power-ups**:
   - Freeze ray to temporarily disable opponent's paddle
-  - Wide paddle to increase paddle size
+  - Wide paddle to increase paddle size (visual only currently)
   - Laser to destroy bricks in a straight line and temporarily turn opponent paddle to ash
 - **Pause/Resume**: Pause and resume the game using the 'P' key or the dedicated UI button.
 - **Multiple brick patterns**: Standard, Checkerboard, Diamond, Random, Zigzag
 - **Audio**: Sound effects using the Web Audio API, loaded from audio files.
-- **Scoring System**: 
+- **Scoring System**:
   - 5 points for breaking a brick
   - 5 points for lasering a brick
   - 10 points for getting a ball past opponent's boundary
   - 20 points bonus when all bricks are cleared
   - Currently no score limit or win condition based on points
 - **Controls**:
-  - **Keyboard**: 
+  - **Keyboard**:
     - Player 1: Arrow keys for movement, Space to shoot
     - Player 2: A/D keys for movement, S to shoot
   - **Mouse**: Move paddle with mouse (Player 1 in PvA or Single Player mode), Click anywhere on the game canvas to shoot power-up.
-  - **Touch**: 
+  - **Touch**:
     - Player 1 (Bottom): Touch & Drag lower screen half (Move), Tap lower screen half (Power-up)
     - Player 2 (Top): Touch & Drag upper screen half (Move), Tap upper screen half (Power-up)
   - **Pause/Resume**: 'P' Key or Pause/Resume Button
@@ -55,6 +56,7 @@ A two-player version of the classic Brick Breaker game with enhanced features an
 - Vanilla JavaScript for game logic and rendering
 - HTML5 Canvas for graphics
 - CSS for styling and UI elements
+- **Matter.js** for 2D physics simulation
 - Vite for development server and production builds
 - Jest for unit testing
 - Playwright for end-to-end testing
