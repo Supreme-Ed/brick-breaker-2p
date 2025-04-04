@@ -2,6 +2,7 @@
  * Input Manager for Brick Breaker 2P
  * Handles keyboard, mouse, and touch input
  */
+import { audioManager } from '../utils/audio.js'; // Import the singleton instance
 
 export class InputManager {
     constructor(canvas) {
@@ -36,6 +37,7 @@ export class InputManager {
         this.lastSpaceActivation = 0;
         this.lastSActivation = 0;
         this.activationCooldown = 300; // Reduced cooldown for more responsive feel
+        // Removed initialInteractionOccurred flag - audio init handled by game.js
         
         // Bound event handlers for cleanup
         this._boundKeyDown = null;
@@ -83,6 +85,7 @@ export class InputManager {
     }
     
     handleKeyDown(e) {
+        // Removed audio context resume trigger - handled by game.js init
         // Log all key events to debug spacebar issues
         console.log(`[Input] Key down: '${e.key}', keyCode: ${e.keyCode}, code: ${e.code}`);
         
@@ -135,6 +138,7 @@ export class InputManager {
     }
     
     handleMouseDown(e) {
+        // Removed audio context resume trigger - handled by game.js init
         this.isMouseDown = true;
         this.justClicked = true;
         this.clickPending = true; // Set pending flag for next frame
@@ -163,6 +167,7 @@ export class InputManager {
     }
     
     handleTouchStart(e) {
+        // Removed audio context resume trigger - handled by game.js init
         e.preventDefault();
         
         // Store all active touches

@@ -3,7 +3,7 @@
  * Loads necessary modules and initializes the game
  */
 
-import { AudioManager } from './utils/audio.js';
+import { audioManager } from './utils/audio.js'; // Import the singleton instance
 import { game } from './core/game.js';
 
 // Debug helper
@@ -20,8 +20,8 @@ window.debug = function(message) {
 // Expose game globally for tests/debugging
 window.game = game;
 
-// Instantiate AudioManager globally
-window.audioManager = new AudioManager();
+// Removed local AudioManager creation. Rely on the imported singleton.
+// The singleton instance is available via the import.
 
 // Function to initialize the game
 async function initializeGame() { // Make the function async
@@ -65,13 +65,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const restartBtn = document.getElementById('restartGameBtn');
 
     if (returnBtn) {
-        returnBtn.addEventListener('click', () => game.returnToStartScreen());
+        returnBtn.addEventListener('click', () => { if (window.game) window.game.playUIClick(); game.returnToStartScreen(); });
     } else {
         console.warn('[InputManager] Could not find returnToMenuBtn');
     }
 
     if (restartBtn) {
-        restartBtn.addEventListener('click', () => game.restartGame());
+        restartBtn.addEventListener('click', () => { if (window.game) window.game.playUIClick(); game.restartGame(); });
     } else {
         console.warn('[InputManager] Could not find restartGameBtn');
     }

@@ -58,6 +58,7 @@ This document tracks current and future development tasks for the Brick Breaker 
 - [ ] Ensure consistent game performance across different devices
 - [x] Fix any touch control issues on mobile devices (coordinate scaling)
 - [x] Restore missing glow effect on game canvas
+- [x] Fix audio system initialization issues after sound file rework (see DEBUG-AudioFix.md)
 
 ## Notes
 

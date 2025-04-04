@@ -1,3 +1,6 @@
+import { audioManager } from './utils/audio.js'; // Import the singleton instance
+import { createInputManager } from './controllers/input.js'; // Import InputManager factory
+
 function startGame(mode) {
     let url = `game.html?mode=${mode}`;
     if (mode === 1) {
@@ -8,19 +11,58 @@ function startGame(mode) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Ensure InputManager instance exists (to catch first interaction for audio)
+    if (!window.inputManager) {
+         console.log("[Menu] Creating dummy InputManager for audio trigger...");
+         window.inputManager = createInputManager(document.createElement('canvas'));
+    }
+
+    // Removed local AudioManager creation. Rely on the imported singleton.
+
     // --- Game Mode Buttons ---
     const singlePlayerBtn = document.getElementById('startSinglePlayer');
     const twoPlayersBtn = document.getElementById('startTwoPlayers');
     const aiVsAiBtn = document.getElementById('startAiVsAi');
 
     if (singlePlayerBtn) {
-        singlePlayerBtn.addEventListener('click', () => startGame(1));
+        singlePlayerBtn.addEventListener('click', () => {
+            // Attempt to resume/init audio context on click, just before playing sound
+            if (audioManager) audioManager.tryResumeContext();
+            
+            if (audioManager && audioManager.isInitialized) {
+                 audioManager.playSound('uiClick');
+            } else {
+                 // Don't warn if init hasn't happened yet, tryResumeContext handles logs
+                 // console.warn("[Menu Click] AudioManager not ready for uiClick.");
+            }
+            startGame(1);
+        });
     }
     if (twoPlayersBtn) {
-        twoPlayersBtn.addEventListener('click', () => startGame(2));
+        twoPlayersBtn.addEventListener('click', () => {
+            // Attempt to resume/init audio context on click, just before playing sound
+            if (audioManager) audioManager.tryResumeContext();
+
+            if (audioManager && audioManager.isInitialized) {
+                 audioManager.playSound('uiClick');
+            } else {
+                 // console.warn("[Menu Click] AudioManager not ready for uiClick.");
+            }
+            startGame(2);
+        });
     }
     if (aiVsAiBtn) {
-        aiVsAiBtn.addEventListener('click', () => startGame(3));
+        aiVsAiBtn.addEventListener('click', () => {
+            // Attempt to resume/init audio context on click, just before playing sound
+            if (audioManager) audioManager.tryResumeContext();
+
+            if (audioManager && audioManager.isInitialized) {
+                 audioManager.playSound('uiClick');
+            } else {
+                 // console.warn("[Menu Click] AudioManager not ready for uiClick.");
+            }
+            startGame(3);
+        });
     }
 
     // --- Radio Button Logic ---
@@ -53,6 +95,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (toggleBtn && controlsDiv && startScreenDiv) { // Added startScreenDiv check
         toggleBtn.addEventListener('click', () => {
+            // Attempt to resume/init audio context on click, just before playing sound
+            if (audioManager) audioManager.tryResumeContext();
+
+            if (audioManager && audioManager.isInitialized) {
+                 audioManager.playSound('uiClick'); // Play sound on toggle
+            } else {
+                 // console.warn("[Menu Click] AudioManager not ready for uiClick.");
+            }
             const isVisible = controlsDiv.classList.contains('visible');
             if (isVisible) {
                 controlsDiv.classList.remove('visible');

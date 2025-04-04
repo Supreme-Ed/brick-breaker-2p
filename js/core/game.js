@@ -28,7 +28,20 @@ class Game {
         this.renderer = createRenderer(this.canvas);
         this.physics = createPhysicsSystem(this.canvas.width, this.canvas.height);
         this.gameState = createGameStateManager();
-        this.input = createInputManager(this.canvas);
+        // Use existing global InputManager if available, otherwise create it
+        if (window.inputManager) {
+            console.log("[Game Constructor] Using existing global InputManager.");
+            this.input = window.inputManager;
+            // Update canvas reference if needed (assuming InputManager uses it)
+            this.input.canvas = this.canvas;
+            // Re-setup listeners with the correct canvas? Or assume global listeners are enough?
+            // Let's assume InputManager needs re-setup or canvas update for canvas-specific listeners.
+             this.input.setupEventListeners(); // Re-run setup with the correct canvas
+        } else {
+             console.log("[Game Constructor] Creating new InputManager and assigning globally.");
+             this.input = createInputManager(this.canvas);
+             window.inputManager = this.input; // Assign to global scope
+        }
         this.isTouchEnvironment = this.input.isTouchDevice; // Check touch environment
         
         // Initialize game objects
@@ -92,9 +105,9 @@ class Game {
             console.warn('[Game Init] Fullscreen button element (#fullscreenBtn) not found.');
         }
         
-        // Start the game loop
+        // Start the game loop *after* initialization in init() method
         this.lastTime = performance.now(); // Restore lastTime initialization
-        this.gameLoop();
+        // this.gameLoop(); // REMOVED from constructor
         
         // Mark as initialized
         this.initialized = true;
@@ -115,6 +128,16 @@ class Game {
             finalControlMethod = 'mouse'; // Force mouse/touch controls
         }
         this.controlMethod = finalControlMethod; // Store final method on Game instance
+
+        // --- Initialize Audio Context for Game Page ---
+        console.log("[Game Init] Attempting to initialize audio context...");
+        try {
+            await audioManager.tryResumeContext();
+            console.log("[Game Init] Audio context initialization attempt finished.");
+        } catch (audioError) {
+            console.error("[Game Init] Error initializing audio context:", audioError);
+        }
+        // --- End Audio Init ---
         
         // Initialize game state
         this.gameState.init(this.gameMode, this.controlMethod);
@@ -132,16 +155,13 @@ class Game {
         this.initialized = true;
         // Play start sound
         // Removed playGameStart sound call
-        // Ensure audio is initialized (or initialization is awaited) before proceeding
-        if (!audioManager.isInitialized) {
-            console.log("[Game Init] Audio manager not initialized, calling and awaiting init...");
-            await audioManager.init(); // Await initialization here
-        } else if (audioManager.audioContext && audioManager.audioContext.state === 'suspended') {
-             // If already initialized, ensure context is running
-             console.log("[Game Init] Audio context suspended, attempting to resume...");
-             await audioManager.audioContext.resume();
-        }
+        // Audio initialization is now triggered by InputManager -> tryResumeContext on first user gesture.
+        // No need to call or await audioManager.init() here anymore.
         
+        // Start the game loop AFTER all initialization is complete
+        console.log("[Game Init] Starting game loop...");
+        this.gameLoop();
+
         // Return the game instance for chaining
         return this;
     }
@@ -206,7 +226,7 @@ class Game {
         if (this.gameState.isPaused()) {
             // If paused, still request the next frame to keep checking
             // but don't update game logic or draw. Optionally draw a pause overlay.
-            console.log('[Game Loop] Game is paused. Calling drawPauseScreen.'); // DEBUG
+            // console.log('[Game Loop] Game is paused. Calling drawPauseScreen.'); // DEBUG - Removed repeating log
             this.renderer.drawPauseScreen(); // Draw pause screen
             requestAnimationFrame(this.gameLoop.bind(this));
             return; // Skip update and draw
@@ -336,9 +356,9 @@ class Game {
             if (this.particles.length > 0) {
                 const initialCount = this.particles.length;
                 // Check for invalid objects before filtering
-                this.particles = this.particles.filter(particle => 
-                    particle && typeof particle === 'object' && 
-                    !particle.isExpired && particle.active);
+                this.particles = this.particles.filter(particle =>
+                    particle && typeof particle === 'object' &&
+                    particle.active); // Keep only active particles, remove check for non-existent 'isExpired'
                 const removedCount = initialCount - this.particles.length;
                 if (removedCount > 0 && initialCount > 50) { // Only log if we're removing a significant number
                     console.log(`[Game] Cleaned up ${removedCount} expired particles. Remaining: ${this.particles.length}`);
@@ -606,6 +626,7 @@ class Game {
     
     // Method to toggle pause state
     togglePause() {
+        audioManager.playSound('uiClick'); // Play sound on pause/resume toggle
         console.log('[Game] togglePause called'); // DEBUG
         const newState = this.gameState.togglePause();
         console.log('[Game] New state after toggle:', newState); // DEBUG
@@ -616,6 +637,7 @@ class Game {
     }
     
     toggleFullScreen() {
+        this.playUIClick(); // Play click sound
         const docEl = document.documentElement;
         const requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
         const cancelFullScreen = document.exitFullscreen || document.mozCancelFullScreen || document.webkitExitFullscreen || document.msExitFullscreen;
@@ -758,7 +780,16 @@ class Game {
     restartGame() {
         this.resetGame();
         this.gameState.restartGame();
-        audioManager.playGameStart();
+        // audioManager.playGameStart(); // Removed call to non-existent function
+    }
+
+    // Method to safely play UI click sound
+    playUIClick() {
+        if (audioManager && audioManager.isInitialized) {
+            audioManager.playSound('uiClick');
+        } else {
+            console.warn("[Game] Attempted to play UI click sound before audio manager was ready.");
+        }
     }
 }
 
