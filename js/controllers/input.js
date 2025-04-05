@@ -17,6 +17,7 @@ export class InputManager {
             Escape: false,
             l: false, // Cheat: Add Laser
             f: false, // Cheat: Add FreezeRay
+            w: false, // Cheat: Add Wide Paddle
             p: false  // Added 'p' key for pause
         };
         this.isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -113,6 +114,13 @@ export class InputManager {
             console.log("[Input] 'p' key pressed");
             e.preventDefault();
             return; // Early return after handling p
+        }
+        // More robust W key detection (for Wide Paddle cheat)
+        if (e.key === 'w' || e.key === 'W' || e.code === 'KeyW' || e.keyCode === 87) {
+            this.keys.w = true;
+            console.log("[Input] 'w' key pressed (Wide Paddle Cheat)");
+            e.preventDefault();
+            return; // Early return after handling w
         }
         
         // For all other keys that we track
@@ -392,7 +400,7 @@ export class InputManager {
     }
     
     reset() {
-        for (const key in this.keys) {
+        for (const key in this.keys) { // Reset all keys, including 'w'
             this.keys[key] = false;
         }
         this.isMouseDown = false;

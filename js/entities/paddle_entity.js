@@ -3,7 +3,7 @@
  * Handles paddle creation, movement (via Matter.js body updates), and power-up effects
  */
 import { audioManager } from '../utils/audio.js'; // Import AudioManager
-import Matter from 'matter-js';
+import Matter, { Vertices } from 'matter-js';
 
 /**
  * Paddle class for Brick Breaker 2P
@@ -35,7 +35,39 @@ class Paddle {
         this.aiReactionTime = 0; // Timer for AI reaction delay
         this.aiReactionDelay = 0.1; // Delay in seconds before AI reacts
 
-        // Create Matter.js body
+        // Define vertices for the paddle shape
+        const hw = width / 2; // half-width
+        const hh = height / 2; // half-height
+        // Define vertices for a segmented paddle surface (less pointed curve)
+        const segmentAngleOffset = height * 0.4; // Vertical offset for angled segments
+        const centerSegmentWidthRatio = 0.6; // Width of the central flat segment as a ratio of total width
+        const centerSegmentHalfWidth = (width * centerSegmentWidthRatio) / 2;
+        let vertices;
+
+        if (isTopPaddle) {
+            // Angled segments on the bottom edge
+            vertices = [
+                { x: -hw, y: -hh }, // Top-left
+                { x: hw, y: -hh },  // Top-right
+                { x: hw, y: hh },   // Bottom-right corner
+                { x: centerSegmentHalfWidth, y: hh + segmentAngleOffset }, // End of right angled segment
+                { x: -centerSegmentHalfWidth, y: hh + segmentAngleOffset }, // Start of left angled segment
+                { x: -hw, y: hh }    // Bottom-left corner
+            ];
+        } else {
+            // Angled segments on the top edge
+            vertices = [
+                { x: -hw, y: hh },  // Bottom-left
+                { x: hw, y: hh },   // Bottom-right
+                { x: hw, y: -hh },  // Top-right corner
+                { x: centerSegmentHalfWidth, y: -hh - segmentAngleOffset }, // End of right angled segment
+                { x: -centerSegmentHalfWidth, y: -hh - segmentAngleOffset }, // Start of left angled segment
+                { x: -hw, y: -hh }   // Top-left corner
+            ];
+        }
+
+
+        // Create Matter.js body using vertices
         const options = {
             isStatic: true, // Paddles are moved manually, not by physics forces
             restitution: 1.0, // Perfect bounciness
@@ -43,7 +75,10 @@ class Paddle {
             label: 'paddle', // Identify body type in collisions
             gameObject: this // Reference back to the Paddle instance
         };
-        this.physicsBody = Matter.Bodies.rectangle(x + width / 2, y + height / 2, width, height, options); // Position is center-based
+        // Create the body from the calculated vertices. Position is the desired center.
+        // Create the body from the calculated vertices. Position is the desired center.
+        // Matter.Bodies.fromVertices expects an array of vertex sets.
+        this.physicsBody = Matter.Bodies.fromVertices(x + width / 2, y + height / 2, [vertices], options);
 
         // Add to the world
         Matter.World.add(matterWorld, this.physicsBody);
@@ -101,6 +136,8 @@ class Paddle {
                 this.isWide = false;
                 this.widePaddleTimeRemaining = 0;
                 this.width = this.originalWidth;
+                // Scale physics body back to normal size
+                Matter.Body.scale(this.physicsBody, 1 / 1.5, 1, this.physicsBody.position);
             }
         }
         
@@ -311,17 +348,50 @@ class Paddle {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
         ctx.fillRect(this.x + 3, this.y + 3, this.width, this.height);
         
-        // Draw paddle with gradient
-        const gradient = ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.height);
-        
+        // --- Draw paddle shape using path based on vertices ---
+        // --- Draw paddle shape using path based on segmented vertices ---
+        const hw = this.width / 2; // half-width
+        const hh = this.height / 2; // half-height
+        // Use the same parameters as the physics body definition
+        const segmentAngleOffset = this.height * 0.4;
+        const centerSegmentWidthRatio = 0.6;
+        const centerSegmentHalfWidth = (this.width * centerSegmentWidthRatio) / 2;
+        const centerX = this.x + hw; // Center X for drawing
+        const centerY = this.y + hh; // Center Y for drawing
+
+        ctx.beginPath();
+
+        if (this.isTopPaddle) {
+            // Angled segments on the bottom edge
+            ctx.moveTo(centerX - hw, centerY - hh); // Top-left
+            ctx.lineTo(centerX + hw, centerY - hh); // Top-right
+            ctx.lineTo(centerX + hw, centerY + hh); // Bottom-right corner
+            ctx.lineTo(centerX + centerSegmentHalfWidth, centerY + hh + segmentAngleOffset); // End of right angled segment
+            ctx.lineTo(centerX - centerSegmentHalfWidth, centerY + hh + segmentAngleOffset); // Start of left angled segment
+            ctx.lineTo(centerX - hw, centerY + hh); // Bottom-left corner
+            ctx.closePath(); // Close path back to top-left
+        } else {
+            // Angled segments on the top edge
+            ctx.moveTo(centerX - hw, centerY + hh); // Bottom-left
+            ctx.lineTo(centerX + hw, centerY + hh); // Bottom-right
+            ctx.lineTo(centerX + hw, centerY - hh); // Top-right corner
+            ctx.lineTo(centerX + centerSegmentHalfWidth, centerY - hh - segmentAngleOffset); // End of right angled segment
+            ctx.lineTo(centerX - centerSegmentHalfWidth, centerY - hh - segmentAngleOffset); // Start of left angled segment
+            ctx.lineTo(centerX - hw, centerY - hh); // Top-left corner
+            ctx.closePath(); // Close path back to bottom-left
+        }
+
+        // Apply gradient fill
+        const gradient = ctx.createLinearGradient(this.x, this.y, this.x, this.y + this.height); // Gradient based on original rect bounds
+
         if (this.isFrozen) {
             // Frozen paddle (blue/white)
             gradient.addColorStop(0, '#A5F2F3');
             gradient.addColorStop(1, '#56CCF2');
             ctx.fillStyle = gradient;
-            ctx.fillRect(this.x, this.y, this.width, this.height);
-            
-            // Add ice crystal effect
+            ctx.fill(); // Use fill() for path
+
+            // Add ice crystal effect (drawn over the shape)
             this.drawIceCrystals(ctx);
         } else {
             // Normal paddle (green for player 1, blue for player 2)
@@ -332,19 +402,24 @@ class Paddle {
                 gradient.addColorStop(0, '#2ecc71');
                 gradient.addColorStop(1, '#27ae60');
             }
-            
+
             ctx.fillStyle = gradient;
-            ctx.fillRect(this.x, this.y, this.width, this.height);
-            
-            // Add highlight
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-            ctx.fillRect(this.x, this.y, this.width, this.height / 3);
+            ctx.fill(); // Use fill() for path
+
+            // Add highlight (needs adjustment for curved shape, maybe skip or simplify)
+            // Simple highlight near the non-curved edge
+            // ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            // if (this.isTopPaddle) {
+            //     ctx.fillRect(this.x, this.y, this.width, this.height / 3); // Highlight top
+            // } else {
+            //     ctx.fillRect(this.x, this.y + this.height * 2/3, this.width, this.height / 3); // Highlight bottom
+            // }
         }
         
-        // Draw border
+        // Draw border using the same path
         ctx.strokeStyle = '#333';
         ctx.lineWidth = 1;
-        ctx.strokeRect(this.x, this.y, this.width, this.height);
+        ctx.stroke(); // Stroke the path defined earlier
     }
     
     drawAshesEffect(ctx) {
@@ -451,9 +526,16 @@ class Paddle {
     }
     
     makeWide(duration = 10) {
-        this.isWide = true;
-        this.widePaddleTimeRemaining = duration;
-        this.width = this.originalWidth * 1.5;
+        if (!this.isWide) { // Only apply if not already wide
+            this.isWide = true;
+            this.widePaddleTimeRemaining = duration;
+            this.width = this.originalWidth * 1.5;
+            // Scale physics body
+            Matter.Body.scale(this.physicsBody, 1.5, 1, this.physicsBody.position);
+        } else {
+             // If already wide, just reset the timer
+             this.widePaddleTimeRemaining = duration;
+        }
     }
 }
 

@@ -2,6 +2,7 @@
  * FreezeRay power-up class
  * Handles the freeze ray power-up that temporarily disables opponent's paddle
  */
+import { audioManager } from '../utils/audio.js'; // Ensure audioManager is imported
 
 class FreezeRay {
     constructor(x, y, owner, canvasHeight) {
@@ -17,7 +18,7 @@ class FreezeRay {
         this.progress = 0;
     }
 
-    update(paddle1, paddle2) {
+    update(deltaTime, paddle1, paddle2) { // Add deltaTime parameter
         if (this.hitTarget) {
             this.alphaValue -= 0.05;
             if (this.alphaValue <= 0) {
@@ -26,31 +27,36 @@ class FreezeRay {
             return false;
         }
         
-        this.progress += this.speed / Math.abs(this.height);
+        // Update progress based on deltaTime for frame-rate independence
+        // Calculate the total distance the ray needs to travel
+        const totalDistance = Math.abs(this.height); // Assuming height represents total travel distance
+        // Calculate movement this frame based on speed and time
+        const moveDistance = this.speed * 60 * deltaTime; // Speed pixels per second * deltaTime
+        // Update progress as a fraction of total distance
+        this.progress += moveDistance / totalDistance;
+        // Ensure progress doesn't exceed 1
+        this.progress = Math.min(this.progress, 1);
         
         if (this.progress >= 1) {
             const targetPaddle = this.owner === 1 ? paddle2 : paddle1;
             const hitX = this.x;
-            
+
+            // Check for hit ONLY when progress is complete
             if (targetPaddle && hitX >= targetPaddle.x && hitX <= targetPaddle.x + targetPaddle.width) {
-                // Use the paddle's freeze method instead of directly setting properties
+                // --- Hit Logic ---
                 console.log(`[DEBUG FreezeRay] Hit detected on paddle owned by player: ${this.owner === 1 ? 2 : 1}`);
-                targetPaddle.freeze(10);
+                targetPaddle.freeze(10); // Apply freeze effect
                 console.log(`[DEBUG] Player ${this.owner === 1 ? 2 : 1} frozen for 10 seconds!`);
-                this.hitTarget = true;
-                
-                // Check if window.audioManager exists before calling playFreezeHit
-                if (window.audioManager && typeof window.audioManager.playFreezeHit === 'function') {
-                    window.audioManager.playFreezeHit();
-                }
-                
-                return true; // Hit success
+                this.hitTarget = true; // Mark as hit to start fading
+                audioManager.playSound('freezeRayHit'); // Play hit sound
+                return true; // Indicate hit occurred this frame
             } else {
+                // --- Miss Logic --- (Progress reached 1 but didn't hit paddle)
                 console.log(`[DEBUG] Freeze ray missed!`);
-                this.hitTarget = true;
-                return false; // Miss
+                this.hitTarget = true; // Mark as "hit" (completed its travel) to start fading
+                return false; // Indicate miss occurred this frame
             }
-        }
+        } // End of if (this.progress >= 1)
         
         return false; // No hit yet
     }

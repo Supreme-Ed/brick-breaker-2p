@@ -317,6 +317,12 @@ class Game {
         // Update balls (internal logic, not physics movement)
         this.balls.forEach(ball => ball.update(deltaTime));
 
+        // Update active freeze rays
+        this.freezeRays.forEach(ray => ray.update(deltaTime, this.paddle1, this.paddle2)); // Pass paddles for collision check
+
+        // Update active laser beams
+        this.laserBeams.forEach(beam => beam.update(deltaTime, this.paddle1, this.paddle2, this.bricks)); // Pass paddles AND bricks for collision check
+
         // Clean up expired power-ups and particles to prevent memory issues
         this.cleanupExpiredEntities();
 
@@ -324,7 +330,9 @@ class Game {
         // This advances the simulation, moves bodies, and detects collisions
         // The 'afterUpdate' event listener will handle deferred removals
         Matter.Engine.update(this.matterEngine, deltaTime * 1000); // Matter expects delta in milliseconds
-        // --- End Matter.js Update ---
+        // --- Process Deferred Removals (e.g., from LaserBeam hits) ---
+        this.processDeferredRemovals();
+        // --- End Matter.js Update & Removals ---
 
         // --- Check for Ball Out Of Bounds ---
         this.checkBallOutOfBounds();
@@ -510,6 +518,13 @@ class Game {
                 keys.f = false; // Consume the key press
                 audioManager.playSound('powerUp'); // Play feedback sound
             }
+            // Add cheat for Wide Paddle ('w' key)
+            if (keys.w) {
+                this.paddle1.makeWide(); // Call the makeWide method
+                console.log('CHEAT: Wide Paddle activated for Player 1');
+                keys.w = false; // Consume the key press
+                audioManager.playSound('powerUp'); // Play feedback sound
+            }
         }
     }
 
@@ -640,9 +655,10 @@ class Game {
 
         const startX = paddle.x + paddle.width / 2;
         const startY = player === 1 ? paddle.y : paddle.y + paddle.height;
-        const direction = player === 1 ? -1 : 1; // Up for P1, Down for P2
+        // const direction = player === 1 ? -1 : 1; // Direction is implicit in height calculation inside LaserBeam
 
-        this.laserBeams.push(new LaserBeam(startX, startY, direction, player)); // Pass owner
+        // Pass arguments matching FreezeRay: x, y, owner (player), canvasHeight
+        this.laserBeams.push(new LaserBeam(startX, startY, player, this.canvas.height, this.matterWorld)); // Pass matterWorld
         audioManager.playSound('laserShoot');
         console.log(`[Game] Player ${player} shot Laser`);
         this.updatePowerUpIndicators(); // Update UI after using
@@ -1152,6 +1168,21 @@ class Game {
     }
 
     processDeferredRemovals() {
+        // Process removals requested by LaserBeams
+        this.laserBeams.forEach(beam => {
+            if (beam.bodiesToRemove && beam.bodiesToRemove.length > 0) {
+                beam.bodiesToRemove.forEach(body => {
+                    // Double-check body exists in world before removing
+                    if (Matter.Composite.get(this.matterWorld, body.id, 'body')) {
+                         Matter.World.remove(this.matterWorld, body);
+                         // console.log(`[Game] Deferred removal of body ID: ${body.id}`); // DEBUG
+                    }
+                });
+                beam.bodiesToRemove = []; // Clear the list
+            }
+        });
+
+        // Add similar logic here if other systems need deferred removal
         if (this.bricksToRemove.length > 0) {
             console.log(`[Deferred Remove] Processing ${this.bricksToRemove.length} brick bodies.`);
             this.bricksToRemove.forEach(body => {
